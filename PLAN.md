@@ -109,11 +109,45 @@ Datasets are never stored in the repo. Scripts download or load them at run time
 | Robustness | Re-test after JPEG compression, blur and added noise. |
 | Adversarial attacks | Not done in version 1. |
 
+**Broad track additions (PROPOSED):**
+
+| Check | What we do |
+|-------|-----------|
+| Leave-one-generator-out | Hold out each generator in turn, with one held-out repeat per generator. Report the drop as a finding. |
+| False-alarm rate | The share of real photos labelled ai. |
+| "Unclear" rate | The share of images labelled unclear. |
+| Realistic sizes and damage | Test at realistic image sizes and under JPEG, blur, noise and resizing. |
+
 All result cells stay `[PLACEHOLDER - not measured yet]` until a script fills them.
 
 ### 3.6 Open design question
 
 How to run the diffusion reconstruction on a free CPU (few denoising steps, or a deterministic sampler) is **to be decided on Day 2**.
+
+### 3.7 Broad track (PROPOSED)
+
+The broad track is the goal. The narrow v1 detector above (3.1 to 3.6) **remains the fallback**.
+
+- **Encoder:** a frozen CLIP encoder with a linear probe (a simple classifier on top; the encoder is not fine-tuned), trained on fakes from many open generators. The generator list is kept short.
+- **Public model encoder:** the LAION-trained OpenCLIP ViT-L/14 (Hugging Face licence tag MIT; the card uses research-purposes wording; deployed-use status TO VERIFY).
+- **Not used in the public demo:** the OpenAI CLIP ViT-L/14 weights, because the model card says any deployed use is out of scope.
+- **Output:** a label of real, ai or unclear. The "unclear" band thresholds are PROPOSED, to tune.
+- **Input size:** each source is resized to the encoder input size (exact size TO VERIFY). Version 1 keeps 32x32.
+- **Fakes come from open multi-generator datasets only.** No closed-service outputs. The public model uses permissively licensed sources only. Non-commercial (NC) datasets are for offline evaluation only.
+
+### 3.8 Data sources for the broad track
+
+| Name | Generators | Licence | Size | Resolution | Download status | Used for |
+|------|-----------|---------|------|------------|-----------------|----------|
+| GenImage | BigGAN; GLIDE, VQDM, SD v1.4, SD v1.5, ADM, Midjourney, Wukong | CC BY-NC-SA 4.0 (official site; GitHub LICENSE not checked) | 2,681,167 images | 128 to 1024 px | Download links UNVERIFIED | Offline evaluation only |
+| Community Forensics | 4,803 generator models (mostly latent diffusion) | cc-by-4.0 on HF vs CC BY-NC-SA in a search snippet (CONFLICT, UNRESOLVED); generator outputs follow each model's own licence | About 2.76M images, about 1.08 TB | UNVERIFIED | UNVERIFIED | Use TO VERIFY |
+| OpenFake | About 75 model values | cc-by-nc-4.0; GPT Image and proprietary-generator subsets are non-commercial | CONFLICT (about 2.86M vs about 4M) | UNVERIFIED | UNVERIFIED | Offline evaluation only |
+| Synthbuster | DALL-E 2, DALL-E 3, Firefly, Midjourney v5, SD 1.3, 1.4, 2, XL, GLIDE | CC BY-NC-SA 4.0 | 12.4 GB | UNVERIFIED | UNVERIFIED | Offline evaluation only |
+| OpenSDI | Diffusion edits (SD1.5, SD2.1, SDXL, SD3, Flux.1) | CC BY-SA 4.0 | UNVERIFIED | UNVERIFIED | Raw images NOT yet released | Not usable yet |
+| CIFAKE | SD v1.4 only | MIT on HF mirror; Kaggle licence field unconfirmed | CONFLICT (120,000 vs 100,000) | UNVERIFIED | UNVERIFIED | Not decided; TO VERIFY |
+| WildFake | GANs and diffusion | UNVERIFIED | Count CONFLICT | UNVERIFIED | No download link | Not usable yet |
+| DRCT-2M, AI-GenBench, DRAGON, Semi-Truths | UNVERIFIED | UNVERIFIED | UNVERIFIED | UNVERIFIED | UNVERIFIED | Not usable until checked |
+| Closed-service outputs | - | - | - | - | - | NOT USED (see section 11) |
 
 ---
 
@@ -184,6 +218,7 @@ All values below are placeholders that show the **field names**. They are not re
 
 ```json
 {
+  "label": "<real, ai or unclear>",
   "score": "<number between 0 and 1: higher = more likely AI-made>",
   "vae_score": "<number: VAE anomaly score>",
   "heatmap_png_base64": "<base64 text of a PNG heatmap>",
@@ -250,6 +285,8 @@ The web side should not have to wait for the model, because the stub API will re
 
 Both members rehearse the demo together on Day 4.
 
+This 4-day, 2-person plan is for v1. The schedule for the broad track is **unknown**; we do not invent one.
+
 ---
 
 ## 7. Risks and cut line
@@ -295,6 +332,64 @@ These are ideas, not promises.
 - [ ] Package versions pinned in `requirements.txt`.
 - [ ] No secrets and no datasets in the repo.
 - [ ] Results stay as `[PLACEHOLDER - not measured yet]` until they are real.
+
+---
+
+## 10. Compute for the broad track
+
+- Conflict C1: this plan says inference runs on a free CPU, but the broad track needs more compute. Encoder size against the 100 MB target and against free-CPU latency is UNVERIFIED.
+- Kaggle GPU quota is about 30 hours a week (confidence MEDIUM-LOW). The reset day is in conflict (C9). Colab has no published quota.
+
+---
+
+## 11. Licence and demo check
+
+| Item | Finding | Status |
+|------|---------|--------|
+| OpenAI CLIP code | MIT | VERIFIED |
+| OpenAI CLIP ViT-L/14 weights | No licence field; model card says deployed use is out of scope | EXCLUDED from the public demo |
+| LAION OpenCLIP ViT-L/14 weights | MIT tag with research-purposes wording | TO VERIFY |
+| OpenCLIP code | Licence not checked | UNVERIFIED |
+| GenImage, OpenFake, Synthbuster | Non-commercial | Offline evaluation only |
+| CIFAKE | MIT on HF mirror | TO VERIFY |
+| SD 3.5 Large | Community License, under $1M revenue | Conditions as stated |
+| FLUX.1 [schnell], Qwen-Image | Apache 2.0 | As stated by the research |
+| FLUX.1 [dev], FLUX.2 [dev], Stable Cascade | Non-commercial | Excluded from the public model |
+| Closed services (Adobe, OpenAI, Google, Midjourney) | Adobe clear prohibition; OpenAI and Google ambiguous; Midjourney unreadable | Excluded |
+
+---
+
+## 12. Decisions
+
+| ID | Decision (approved default) |
+|----|-----------------------------|
+| D-A | Scope is docs only. Narrow v1 stays as the fallback. |
+| D-B | Open multi-generator datasets only; no closed-service outputs. |
+| D-C | The public model uses permissively licensed sources only. NC datasets are for offline evaluation only. |
+| D-D | A frozen encoder with a linear probe only, not fine-tuned; a shorter generator list. |
+| D-E | Native source sizes for broad (each source resized to the encoder input size, exact size TO VERIFY); 32x32 kept for v1. |
+| D-F | The auditor is unchanged: a separate tool, our own generators only. It cannot audit GPT. |
+
+**What stays:** the v1 detector (fallback), the auditor and its wording rule, the cut line, the stack, and the endpoints (`POST /detect` gains a `label` field; `score`, `vae_score`, `heatmap_png_base64` and `note` are kept). Both honesty lines stay verbatim (section 1; this file's "report the drop in performance as a finding" line, and the demo line "This is what we will show, not a promise of results.").
+
+---
+
+## 13. Open conflicts (none resolved)
+
+- C1 PLAN.md: inference on a FREE CPU vs the earlier answer: broad needs more compute.
+- C2 GenImage licence: official site CC BY-NC-SA 4.0 (VERIFIED) vs GitHub LICENSE text not shown (UNVERIFIED).
+- C3 Community Forensics licence: HF metadata cc-by-4.0 vs search snippet CC BY-NC-SA. UNRESOLVED.
+- C4 OpenFake total size: HF rows sum to about 2.86M vs arXiv "nearly four million". UNRESOLVED.
+- C5 Semi-Truths count: 1.33M vs 1.47M.
+- C6 WildFake count: 2,680,867 (text) vs 2,557,278 (Table 1).
+- C7 CIFAKE size: 120,000 (search summary) vs 100,000 (HF mirror).
+- C8 OpenAI Terms of Use (rest of world): fetched text inconsistent.
+- C9 Kaggle GPU reset day: Saturday midnight UTC (one post) vs Friday (older threads).
+- C10 Kaggle TPU weekly hours: up to 20 h (docs snippet) vs fixed 30 h (book). LOW.
+- C11 CLIP ViT-L/14 card: deployed use out of scope vs the planned public Vercel and HF demo.
+- C12 FLUX.1 [dev]: card says outputs usable commercially vs third-party mirror says training other models commercially excluded (mirror UNVERIFIED).
+
+---
 
 ### Things still to verify
 
