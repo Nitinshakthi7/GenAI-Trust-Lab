@@ -47,6 +47,17 @@ def load_fmnist(split):
     return F.pad(x, (2, 2, 2, 2), value=-1.0)  # add a black border (-1) -> 32x32
 
 
+# The 10 Fashion-MNIST classes, in label order (label 0 = 'T-shirt/top', ...).
+FMNIST_CLASSES = ["T-shirt/top", "Trouser", "Pullover", "Dress", "Coat",
+                  "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"]
+
+
+def load_fmnist_labeled(split):
+    """Same images as load_fmnist, plus the labels. Returns ((N,1,32,32) floats, (N,) ints 0-9)."""
+    ds = datasets.FashionMNIST(DATA_DIR / "fmnist", train=(split == "train"), download=True)
+    return load_fmnist(split), ds.targets.long()
+
+
 def make_splits():
     """Write data/splits.csv (columns: dataset,index,part). Same every time."""
     rng = np.random.RandomState(SEED)

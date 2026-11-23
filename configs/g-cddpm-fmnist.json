@@ -1,0 +1,21 @@
+{
+  "run_id": "g-cddpm-fmnist",
+  "dataset": "fmnist",
+  "part": "train (all 60,000)",
+  "num_images": 60000,
+  "seed": 42,
+  "epochs": 26,
+  "epochs_reason": "1800 s budget divided by 68.33 s per epoch (measured in the 1-epoch test) = 26 epochs rounded down, inside the 20 to 150 limits; about 30 min per run is proposed, to tune",
+  "max_minutes": 35.0,
+  "batch_size": 128,
+  "learning_rate": 0.0002,
+  "optimizer": "Adam",
+  "ema_decay": 0.999,
+  "timesteps": 1000,
+  "noise_schedule": "cosine",
+  "num_classes": 10,
+  "label_dropout": 0.1,
+  "sample_guidance": 3.0,
+  "sample_steps": 50,
+  "note": "proposed, to tune"
+}

@@ -1,0 +1,55 @@
+{
+  "run_id": "detector_dev",
+  "mode": "dev",
+  "note": "proposed, to tune",
+  "generators": [
+    "g-vae-cifar"
+  ],
+  "fake_seeds": {
+    "g-vae-cifar": {
+      "train": 1042,
+      "calibration": 2042,
+      "test": 3042
+    }
+  },
+  "real_parts_used": [
+    "clf_train",
+    "calibration"
+  ],
+  "final_test_used": false,
+  "images": {
+    "real_train": 20000,
+    "real_calibration": 5000,
+    "fake_train_per_generator": {
+      "g-vae-cifar": 20000
+    },
+    "fake_calibration_per_generator": {
+      "g-vae-cifar": 5000
+    }
+  },
+  "limit_images_per_set": 0,
+  "features": {
+    "vae": "d-vae-cifar: reconstruction error per pixel, KL",
+    "ddpm": null
+  },
+  "logistic_regression": {
+    "standardised": true,
+    "random_state": 42,
+    "max_iter": 1000
+  },
+  "cnn": {
+    "epochs": 2,
+    "batch_size": 128,
+    "optimizer": "Adam",
+    "learning_rate": 0.001,
+    "loss": "BCEWithLogits",
+    "seed": 42
+  },
+  "threshold_rule": "high = 95th percentile of the real calibration AI-scores; low = 5th percentile of the fake calibration AI-scores; if low >= high both become their midpoint",
+  "perturbations": {
+    "jpeg_quality": 50,
+    "blur_sigma": 1.0,
+    "noise_std_on_0_to_1_scale": 0.05
+  },
+  "dev_note": "dev: calibration data, not a result; final_test never touched"
+}

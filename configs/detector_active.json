@@ -1,0 +1,5 @@
+{
+  "active_run": "detector_dev",
+  "thresholds_from": "results/detector_dev.json",
+  "note": "dev detector: trained on one weak generator (VAE fakes) only; replace by the final run when it exists"
+}

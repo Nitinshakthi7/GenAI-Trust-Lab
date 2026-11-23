@@ -1,0 +1,11 @@
+{
+  "run_id": "g-cddpm-fmnist",
+  "epochs_run": 22,
+  "stopped_by_time_limit": true,
+  "seconds_per_epoch": 92.55,
+  "total_minutes": 34.02,
+  "final_loss": 0.0514,
+  "parameter_count": 2985985,
+  "weights_size_mb": 11.98,
+  "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU"
+}

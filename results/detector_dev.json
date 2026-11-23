@@ -1,0 +1,123 @@
+{
+  "run_id": "detector_dev",
+  "warning": "dev: calibration data, not a result; final_test never touched",
+  "generators": [
+    "g-vae-cifar"
+  ],
+  "limit_images_per_set": 0,
+  "feature_columns": 2,
+  "feature_means": {
+    "real_calibration": [
+      0.04,
+      58.7339
+    ],
+    "fake_calibration": {
+      "g-vae-cifar": [
+        0.0065,
+        53.7797
+      ]
+    }
+  },
+  "cnn_epochs_run": 2,
+  "cnn_last_epoch_loss": 0.0124,
+  "dev_report": {
+    "logistic_regression": {
+      "low_threshold": 0.4883,
+      "high_threshold": 0.4883,
+      "real_images_labels": {
+        "real": 0.9946,
+        "ai": 0.0054,
+        "unclear": 0.0
+      },
+      "per_generator": {
+        "g-vae-cifar": {
+          "auroc": 1.0,
+          "accuracy_at_0.5": 0.9973,
+          "fake_images_labels": {
+            "real": 0.0004,
+            "ai": 0.9996,
+            "unclear": 0.0
+          }
+        }
+      }
+    },
+    "cnn_baseline": {
+      "low_threshold": 0.4998,
+      "high_threshold": 0.4998,
+      "real_images_labels": {
+        "real": 0.9916,
+        "ai": 0.0084,
+        "unclear": 0.0
+      },
+      "per_generator": {
+        "g-vae-cifar": {
+          "auroc": 1.0,
+          "accuracy_at_0.5": 0.9958,
+          "fake_images_labels": {
+            "real": 0.0,
+            "ai": 1.0,
+            "unclear": 0.0
+          }
+        }
+      }
+    }
+  },
+  "leave_one_generator_out": "not possible yet: needs two generators",
+  "robustness": {
+    "jpeg_q50": {
+      "logistic_regression": {
+        "g-vae-cifar": {
+          "auroc": 0.9999,
+          "accuracy_at_0.5": 0.9958
+        }
+      },
+      "cnn_baseline": {
+        "g-vae-cifar": {
+          "auroc": 0.9999,
+          "accuracy_at_0.5": 0.9916
+        }
+      }
+    },
+    "blur_sigma1.0": {
+      "logistic_regression": {
+        "g-vae-cifar": {
+          "auroc": 0.9795,
+          "accuracy_at_0.5": 0.8324
+        }
+      },
+      "cnn_baseline": {
+        "g-vae-cifar": {
+          "auroc": 0.6871,
+          "accuracy_at_0.5": 0.5126
+        }
+      }
+    },
+    "noise_std0.05": {
+      "logistic_regression": {
+        "g-vae-cifar": {
+          "auroc": 0.9999,
+          "accuracy_at_0.5": 0.5145
+        }
+      },
+      "cnn_baseline": {
+        "g-vae-cifar": {
+          "auroc": 0.9995,
+          "accuracy_at_0.5": 0.6769
+        }
+      }
+    }
+  },
+  "seconds": {
+    "features": 0.5,
+    "logistic_regression_fit": 0.03,
+    "cnn_per_epoch": [
+      30.4,
+      36.2
+    ],
+    "scoring_and_calibration": 2.4,
+    "leave_one_generator_out": 0.0,
+    "robustness": 14.9,
+    "total": 86.7
+  },
+  "device": "cpu"
+}
