@@ -3,3 +3,16 @@
 __pycache__/
 *.env
 .env
+data/*
+!data/splits.csv
+fakes/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.h5
+node_modules/
+.venv/
+web/public/examples/real/
+weights/
+logs/

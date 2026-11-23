@@ -1,0 +1,187 @@
+{
+  "contract_version": "proposed-1",
+  "status": "PROPOSED: Nitin and Tejash agree this at the first meeting",
+  "note": "Example values only. They are not results.",
+  "endpoints": {
+    "GET /health": {
+      "response": {
+        "status": "ok"
+      }
+    },
+    "POST /detect": {
+      "request": "multipart: image",
+      "response": {
+        "label": "unclear",
+        "score": 0.5,
+        "vae_score": 0.4,
+        "baseline_score": 0.5,
+        "heatmap_png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
+        "heatmap_source": "vae",
+        "gradcam_png_base64": null,
+        "input_size": "32x32",
+        "out_of_scope": false,
+        "warning": null,
+        "note": "stub: fixed example answer"
+      }
+    },
+    "GET /audit/results": {
+      "response": {
+        "experiments": [
+          {
+            "name": "memorization vs training-set size (one point per run)",
+            "x_label": "training-set size",
+            "points": [
+              {
+                "x": 500,
+                "memorization_rate": 0.2
+              }
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "generated_png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
+            "nearest_png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
+            "distance": 5.5
+          }
+        ],
+        "note": "stub: example numbers, not results"
+      }
+    },
+    "POST /audit/check": {
+      "request": "multipart: image",
+      "response": {
+        "nearest": [
+          {
+            "rank": 1,
+            "distance": 5.5,
+            "phash_distance": 12,
+            "image_png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
+          }
+        ],
+        "flag": "not_flagged",
+        "note": "stub: similarity only, not legal copying"
+      }
+    },
+    "POST /compare": {
+      "request": "multipart: image_a, image_b, use_words (true/false), focus (optional text, up to 100 characters)",
+      "response": {
+        "similarity": {
+          "ssim": 0.5,
+          "lpips": null
+        },
+        "diff_heatmap_png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
+        "regions_png_base64": null,
+        "feature_table": [
+          {
+            "feature": "mean brightness",
+            "image_a": "0.4",
+            "image_b": "0.6",
+            "does_not_prove": "Descriptive only."
+          },
+          {
+            "feature": "dominant colours",
+            "image_a": "orange 60%, white 25%, brown 15%",
+            "image_b": "black 70%, grey 20%, white 10%",
+            "does_not_prove": "Descriptive only; background colours count too."
+          }
+        ],
+        "differences": [
+          {
+            "part": "fur colour",
+            "image_a": "orange",
+            "image_b": "black"
+          }
+        ],
+        "source": "vlm",
+        "summary": "stub: example text",
+        "note": "Pixel tools need aligned images; words may be wrong."
+      }
+    },
+    "GET /generators": {
+      "response": {
+        "generators": [
+          {
+            "id": "g-vae-cifar",
+            "name": "Conv VAE",
+            "dataset": "CIFAR-10",
+            "family": "vae",
+            "params": 900000,
+            "size_mb": 4,
+            "status": "ready",
+            "controls": [
+              "seed",
+              "n",
+              "interpolate"
+            ],
+            "classes": [],
+            "licence_note": "stub: example text"
+          }
+        ],
+        "note": "stub: the real answer lists every generator"
+      }
+    },
+    "POST /generate": {
+      "request": {
+        "generator_id": "g-vae-fmnist",
+        "seed": 42,
+        "n": 2,
+        "steps": null,
+        "guidance": null,
+        "class_id": null,
+        "interpolate": {
+          "seed_b": 7,
+          "frames": 2
+        }
+      },
+      "response": {
+        "generator_id": "g-vae-fmnist",
+        "images": [
+          {
+            "png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
+            "seed": 42,
+            "class_id": null
+          },
+          {
+            "png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
+            "seed": 7,
+            "class_id": null
+          }
+        ],
+        "metadata": {
+          "model": "conv VAE",
+          "dataset": "Fashion-MNIST",
+          "steps": null,
+          "guidance": null,
+          "label": "small model, expect low quality"
+        },
+        "note": "stub: example text"
+      }
+    },
+    "POST /evidence": {
+      "request": "multipart: image",
+      "response": {
+        "exif": {
+          "found": true,
+          "fields": {
+            "Make": "ExampleMake",
+            "Model": "ExampleModel"
+          },
+          "does_not_prove": "Missing EXIF is weak evidence; present EXIF does not mean real."
+        },
+        "c2pa": {
+          "status": "none",
+          "summary": null,
+          "does_not_prove": "A missing manifest means nothing."
+        },
+        "ela_png_base64": null,
+        "fft_png_base64": null,
+        "note": "Evidence, not proof."
+      }
+    }
+  },
+  "error_format": {
+    "error": "<text>"
+  },
+  "error_codes": "400 for a bad upload, 500 otherwise"
+}

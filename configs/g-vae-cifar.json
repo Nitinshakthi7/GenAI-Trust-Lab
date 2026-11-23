@@ -1,0 +1,12 @@
+{
+  "run_id": "g-vae-cifar",
+  "dataset": "cifar10",
+  "part": "train (all 50,000)",
+  "num_images": 50000,
+  "seed": 42,
+  "epochs": 10,
+  "batch_size": 128,
+  "learning_rate": 0.0002,
+  "latent_size": 128,
+  "note": "proposed, to tune"
+}

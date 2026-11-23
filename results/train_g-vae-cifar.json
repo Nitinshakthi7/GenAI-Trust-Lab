@@ -1,0 +1,9 @@
+{
+  "run_id": "g-vae-cifar",
+  "epochs_run": 10,
+  "seconds_per_epoch": 3.71,
+  "final_loss": 200.32,
+  "parameter_count": 1120451,
+  "weights_size_mb": 4.5,
+  "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU"
+}

@@ -1,0 +1,12 @@
+# Packages the project needs, pinned to the versions used on Nitin's machine.
+# torch is the GPU (CUDA 12.4) build. To install it on another PC, use:
+#   pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0+cu124
+torchvision==0.21.0+cu124
+numpy==2.5.4
+scikit-learn==1.9.1
+scikit-image==0.26.0
+pillow==13.0.0
+fastapi==0.165.0
+uvicorn==0.54.0
+python-multipart==0.0.34
