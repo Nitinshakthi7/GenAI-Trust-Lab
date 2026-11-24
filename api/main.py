@@ -5,9 +5,9 @@
 # Then open http://localhost:8000/docs for an interactive page where you can try every endpoint.
 #
 # Real endpoints here: GET /health, GET /generators, POST /generate, POST /compare (without the Words panel),
-# POST /detect (the DEV detector: trained on one weak generator only, see detect.py)
-# and POST /evidence (EXIF only, see evidence.py).
-# The other two endpoints are stubs (fixed example answers) and live in stubs.py.
+# POST /detect (the DEV detector: trained on one weak generator only, see detect.py),
+# POST /evidence (EXIF only, see evidence.py), GET /audit/results (see audit.py: a placeholder until the runs exist)
+# and POST /audit/check (see audit.py: the nearest training images of one Auditor run). No endpoint is a stub any more.
 # Every error is answered as {"error": "<plain text>"}:
 #   400 bad request, 404 unknown generator or address, 503 model not ready, 500 anything else.
 
@@ -20,18 +20,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from api import compare, detect, evidence, generators, stubs
-from api.common import MAX_UPLOAD_BYTES, ApiError, read_upload  # MAX_UPLOAD_BYTES (5 MB) is used by the upload endpoints in stubs.py
+from api import audit, compare, detect, evidence, generators
+from api.common import ApiError, read_upload
 
 # Which website addresses may call this API. The default is the Vite website on this computer.
 # Set ALLOWED_ORIGINS (comma-separated) to change it. It holds addresses only, never secrets.
 DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", DEFAULT_ORIGINS).split(",") if o.strip()]
 
-app = FastAPI(title="GenAI Trust Lab API", description="Image generators, plus stubs for the detector and audit tools.")
+app = FastAPI(title="GenAI Trust Lab API", description="Image generators, detector, comparison, evidence and audit tools.")
 app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"],
                    allow_headers=["Content-Type"], expose_headers=["X-Stub"])
-app.include_router(stubs.router)
 
 
 # ----------------------------------------------------------------- error answers
@@ -77,6 +76,17 @@ def get_generators():
 @app.post("/generate")
 def post_generate(request: generators.GenerateRequest):
     return generators.generate(request)
+
+
+@app.get("/audit/results")
+def get_audit_results():
+    return audit.audit_results()
+
+
+@app.post("/audit/check")
+async def post_audit_check(image: UploadFile = File(...), run: str = Form(audit.DEFAULT_RUN)):
+    data = await read_upload(image)                  # PNG or JPG, at most 5 MB, else 400
+    return await run_in_threadpool(audit.audit_check, data, run)   # unknown run 400, run not finished 503
 
 
 @app.post("/detect")

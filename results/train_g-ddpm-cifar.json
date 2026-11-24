@@ -1,0 +1,11 @@
+{
+  "run_id": "g-ddpm-cifar",
+  "epochs_run": 28,
+  "stopped_by_time_limit": true,
+  "seconds_per_epoch": 72.81,
+  "total_minutes": 33.99,
+  "final_loss": 0.061,
+  "parameter_count": 2985475,
+  "weights_size_mb": 11.98,
+  "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU"
+}

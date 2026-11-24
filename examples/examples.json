@@ -1,0 +1,122 @@
+[
+  {
+    "file": "fake/fake_ddpm_0.png",
+    "kind": "fake",
+    "source": "g-ddpm-cifar",
+    "index": 0
+  },
+  {
+    "file": "fake/fake_ddpm_1.png",
+    "kind": "fake",
+    "source": "g-ddpm-cifar",
+    "index": 1
+  },
+  {
+    "file": "fake/fake_ddpm_2.png",
+    "kind": "fake",
+    "source": "g-ddpm-cifar",
+    "index": 2
+  },
+  {
+    "file": "fake/fake_ddpm_3.png",
+    "kind": "fake",
+    "source": "g-ddpm-cifar",
+    "index": 3
+  },
+  {
+    "file": "fake/fake_ddpm_4.png",
+    "kind": "fake",
+    "source": "g-ddpm-cifar",
+    "index": 4
+  },
+  {
+    "file": "fake/fake_vae_0.png",
+    "kind": "fake",
+    "source": "g-vae-cifar",
+    "index": 0
+  },
+  {
+    "file": "fake/fake_vae_1.png",
+    "kind": "fake",
+    "source": "g-vae-cifar",
+    "index": 1
+  },
+  {
+    "file": "fake/fake_vae_2.png",
+    "kind": "fake",
+    "source": "g-vae-cifar",
+    "index": 2
+  },
+  {
+    "file": "fake/fake_vae_3.png",
+    "kind": "fake",
+    "source": "g-vae-cifar",
+    "index": 3
+  },
+  {
+    "file": "fake/fake_vae_4.png",
+    "kind": "fake",
+    "source": "g-vae-cifar",
+    "index": 4
+  },
+  {
+    "file": "real/real_0.png",
+    "kind": "real",
+    "source": "cifar10 calibration image 1",
+    "index": 1
+  },
+  {
+    "file": "real/real_1.png",
+    "kind": "real",
+    "source": "cifar10 calibration image 2",
+    "index": 2
+  },
+  {
+    "file": "real/real_2.png",
+    "kind": "real",
+    "source": "cifar10 calibration image 9",
+    "index": 9
+  },
+  {
+    "file": "real/real_3.png",
+    "kind": "real",
+    "source": "cifar10 calibration image 11",
+    "index": 11
+  },
+  {
+    "file": "real/real_4.png",
+    "kind": "real",
+    "source": "cifar10 calibration image 12",
+    "index": 12
+  },
+  {
+    "file": "real/real_5.png",
+    "kind": "real",
+    "source": "cifar10 calibration image 14",
+    "index": 14
+  },
+  {
+    "file": "real/real_6.png",
+    "kind": "real",
+    "source": "cifar10 calibration image 17",
+    "index": 17
+  },
+  {
+    "file": "real/real_7.png",
+    "kind": "real",
+    "source": "cifar10 calibration image 19",
+    "index": 19
+  },
+  {
+    "file": "real/real_8.png",
+    "kind": "real",
+    "source": "cifar10 calibration image 24",
+    "index": 24
+  },
+  {
+    "file": "real/real_9.png",
+    "kind": "real",
+    "source": "cifar10 calibration image 25",
+    "index": 25
+  }
+]

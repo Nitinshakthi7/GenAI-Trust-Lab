@@ -1,0 +1,21 @@
+{
+  "run_id": "d-ddpm-cifar",
+  "dataset": "cifar10",
+  "part": "ddpm_train",
+  "num_images": 30000,
+  "seed": 43,
+  "epochs": 49,
+  "epochs_reason": "1800 s budget divided by 36.27 s per epoch (measured in the 1-epoch test) = 49 epochs rounded down, inside the 20 to 150 limits; about 30 min per run is proposed, to tune",
+  "max_minutes": 35.0,
+  "batch_size": 128,
+  "learning_rate": 0.0002,
+  "optimizer": "Adam",
+  "ema_decay": 0.999,
+  "timesteps": 1000,
+  "noise_schedule": "cosine",
+  "num_classes": 0,
+  "label_dropout": null,
+  "sample_guidance": null,
+  "sample_steps": 50,
+  "note": "proposed, to tune"
+}

@@ -1,0 +1,13 @@
+{
+  "label": "unclear",
+  "score": 0.5,
+  "vae_score": 0.4,
+  "baseline_score": 0.5,
+  "heatmap_png_base64": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAA8klEQVR4nO1VsQ2DMBA0r1SMkAXSoa8Rk2QE6sziEZiDAqV+MQxSGpTCkWXsx/5YuEm46mWf787/MlS3a6tKAoqqq9NAgHMG/9wi6tErjjQwotSjLbJDVOG3iGWjpiQt5DA3SIaN0NjFjUG83SRoSLgFe3uoib1yCI/m6XxmEKrvHfBgmS7NPQ5x9Thc5l4mSKpjlp+VBYkWcutJY+MBGUmVLAp09Ty0YJaS6ujQ4mTUBF0NXa2UWqeFecks5qFt7k8JzRTrtJgiZmDZX8HmoB5R08YgVGwEqe1Zlly9xkeeohCXEqIupEPOxg//k49CcYM3fChx4funIKYAAAAASUVORK5CYII=",
+  "heatmap_source": "vae",
+  "gradcam_png_base64": null,
+  "input_size": "32x32",
+  "out_of_scope": false,
+  "warning": null,
+  "note": "stub: fixed examples of what the scores and heatmap look like. No model analyzed this image."
+}

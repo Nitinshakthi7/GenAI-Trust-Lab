@@ -1,0 +1,207 @@
+diff --git a/web/public/stub/audit_results.json b/web/public/stub/audit_results.json
+index 134f7d5..ff3dd17 100644
+--- a/web/public/stub/audit_results.json
++++ b/web/public/stub/audit_results.json
+@@ -1,19 +1,13 @@
+ {
+   "experiments": [
+     {
+-      "name": "a-500",
+-      "x_label": "training-set size",
++      "name": "memorization vs training-set size",
++      "x_label": "training images",
+       "points": [
+         {
+           "x": 500,
+           "memorization_rate": null
+-        }
+-      ]
+-    },
+-    {
+-      "name": "a-10000",
+-      "x_label": "training-set size",
+-      "points": [
++        },
+         {
+           "x": 10000,
+           "memorization_rate": null
+@@ -21,11 +15,15 @@
+       ]
+     },
+     {
+-      "name": "a-500-dup",
+-      "x_label": "training-set size",
++      "name": "effect of duplicates (500 training images)",
++      "x_label": "duplicate share of the training set (%)",
+       "points": [
+         {
+-          "x": 500,
++          "x": 0,
++          "memorization_rate": null
++        },
++        {
++          "x": 30,
+           "memorization_rate": null
+         }
+       ]
+diff --git a/web/src/home-hero.jsx b/web/src/home-hero.jsx
+index 4a2aac8..c8df538 100644
+--- a/web/src/home-hero.jsx
++++ b/web/src/home-hero.jsx
+@@ -27,7 +27,7 @@ export function HomeHero() {
+         <h1 id="hero-title">Looks real.<br /><em>Look again.</em></h1>
+         <div className="home-introduction">
+           <p>There’s more to an image<br />than meets the eye.</p>
+-          <p>Generate, compare, and discover the traces AI leaves behind.</p>
++          <p>Make small AI images, try a detector, compare two photos, and see where each tool works and where it fails.</p>
+         </div>
+       </div>
+       <figure className="home-experiment">
+diff --git a/web/src/image-tools.jsx b/web/src/image-tools.jsx
+index bdf4921..232245d 100644
+--- a/web/src/image-tools.jsx
++++ b/web/src/image-tools.jsx
+@@ -151,7 +151,7 @@ function CompareResults({ result }) {
+         {result.similarity?.lpips != null && <div><dt>Perceptual distance (LPIPS)</dt><dd>{formatNumber(result.similarity.lpips)}</dd></div>}
+       </dl>
+       <ResultImage image={result.diff_heatmap_png_base64} label="SSIM difference map" />
+-      {result.regions_png_base64 && <ResultImage image={result.regions_png_base64} label="Matched regions" />}
++      {result.regions_png_base64 && <ResultImage image={result.regions_png_base64} label="CNN map: red = no similar part in the other image" />}
+       <h3>Image features</h3>
+       {features.length ? (
+         <div className="table-scroll" tabIndex="0" role="region" aria-label="Image features table">
+@@ -214,8 +214,8 @@ export function ComparePage() {
+             <label htmlFor="compare-focus">What should I compare?</label>
+             <input id="compare-focus" type="text" maxLength={100} value={focus} placeholder="For example, fur colour and eyes" onChange={(event) => { request.reset(); setFocus(event.target.value); }} aria-describedby="focus-hint" />
+             <p className="field-hint" id="focus-hint">Optional. Words uses this focus when enabled.</p>
+-            <label className="check-control"><input type="checkbox" checked={words} disabled={!wordsEnabled} onChange={(event) => { request.reset(); setWords(event.target.checked); }} aria-describedby="words-privacy" /> {stubMode ? 'Preview Words' : 'Use Words'}</label>
+-            <p id="words-privacy" className="field-hint">{wordsPrivacy} {stubMode ? 'The demo uses a fixed example without sending your photos.' : !wordsEnabled ? 'Words are off for this demo.' : ''}</p>
++            <label className="check-control"><input type="checkbox" checked={words} disabled={!wordsEnabled} onChange={(event) => { request.reset(); setWords(event.target.checked); }} aria-describedby="words-privacy" /> {stubMode && wordsEnabled ? 'Preview Words' : 'Use Words'}</label>
++            <p id="words-privacy" className="field-hint">{wordsPrivacy} {!wordsEnabled ? 'Words are off for this demo.' : stubMode ? 'The demo uses a fixed example without sending your photos.' : ''}</p>
+             <button type="submit" className="button lab-button" disabled={!imageA || !imageB || request.loading}>Compare images</button>
+             <RequestStatus request={request} loadingText="Comparing images…" />
+           </form>
+diff --git a/web/src/lab-data.js b/web/src/lab-data.js
+index b1f4bd0..428d5c5 100644
+--- a/web/src/lab-data.js
++++ b/web/src/lab-data.js
+@@ -13,7 +13,7 @@ const fixtures = {
+ };
+ 
+ export const stubMode = import.meta.env.VITE_USE_STUB !== 'false';
+-export const wordsEnabled = stubMode || import.meta.env.VITE_ENABLE_COMPARE_WORDS === 'true';
++export const wordsEnabled = import.meta.env.VITE_ENABLE_COMPARE_WORDS === 'true';
+ export const placeholder = '[PLACEHOLDER - not measured yet]';
+ export const unavailable = 'not available';
+ export const sizeWarning = 'This detector was trained only on 32x32 CIFAR-10-style images. Results on other photos are not meaningful.';
+diff --git a/web/src/limits.jsx b/web/src/limits.jsx
+index ab48791..ac14609 100644
+--- a/web/src/limits.jsx
++++ b/web/src/limits.jsx
+@@ -15,8 +15,8 @@ const features = [
+   ['Dominant colours', 'The three largest clusters summarize pixels, including the background. They do not identify the colour of a particular object.'],
+   ['Colour, brightness, edges, texture, and size', 'These measurements describe the images. They do not identify which part differs.'],
+   ['Words', 'A vision service can misidentify fine details. Its descriptions may be wrong. ' + wordsPrivacy],
+-  ['LPIPS', 'A perceptual distance summarizes difference without explaining it.'],
+-  ['DINOv2 patch matching', 'Matching patches can belong to different objects. Unmatched areas need not be meaningful differences.'],
++  ['LPIPS', 'A perceptual distance summarizes difference without explaining it. Not built yet.'],
++  ['CNN feature matching (ResNet-18)', 'Matching features can belong to different objects. Unmatched areas need not be meaningful differences. The CNN is pretrained on ImageNet, not trained by us.'],
+   ['Auditor pixel distance', 'Similarity is sensitive to changes in cropping, position, or colour. A close match does not establish copying.'],
+   ['pHash / dHash', 'A close hash does not prove copying. A distant hash does not rule out a link.'],
+   ['Occlusion sensitivity', 'Changing the output by covering an area does not prove which pixels caused the original output.'],
+@@ -27,9 +27,9 @@ const modelCards = [
+   ['g-vae-cifar', 'Generator', 'CIFAR-10 · 32×32 colour'],
+   ['g-vae-fmnist', 'Generator', 'Fashion-MNIST · 28×28 grayscale'],
+   ['g-cddpm-fmnist', 'Conditional generator', 'Fashion-MNIST · 28×28 grayscale'],
+-  ['g-ddpm-cifar', 'Conditional on Gate 2', 'CIFAR-10 · 32×32 colour'],
++  ['g-ddpm-cifar', 'Generator (diffusion)', 'CIFAR-10 · 32×32 colour'],
+   ['d-vae-cifar', 'Detector anomaly score and default error map', 'CIFAR-10 · 32×32 colour'],
+-  ['d-ddpm-cifar', 'Detector reconstruction, conditional on Gate 2', 'CIFAR-10 · 32×32 colour'],
++  ['d-ddpm-cifar', 'Detector reconstruction (diffusion)', 'CIFAR-10 · 32×32 colour'],
+   ['cnn-baseline', 'Detector classifier baseline', 'CIFAR-10 · 32×32 colour'],
+   ['a-500', 'Auditor diffusion run', 'CIFAR-10'],
+   ['a-10000', 'Auditor diffusion run', 'CIFAR-10'],
+@@ -53,7 +53,7 @@ const sources = [
+   ['Wang, Bovik, Sheikh, and Simoncelli. Image Quality Assessment: From Error Visibility to Structural Similarity (2004).'],
+   ['Zhang et al. The Unreasonable Effectiveness of Deep Features as a Perceptual Metric (CVPR 2018).', '1801.03924'],
+   ['Amir et al. Deep ViT Features as Dense Visual Descriptors.', '2112.05814'],
+-  ['Oquab et al. DINOv2.', '2304.07193'],
++  ['He, Zhang, Ren, and Sun. Deep Residual Learning for Image Recognition (CVPR 2016).', '1512.03385'],
+   ['Radford et al. Learning Transferable Visual Models From Natural Language Supervision.', '2103.00020'],
+   ['N. Krawetz. A Picture’s Worth… (Black Hat USA 2007).'],
+   ['Krizhevsky. CIFAR-10 dataset (2009).'],
+@@ -109,7 +109,7 @@ export function LimitsPage() {
+           <p>The Detector is trained for 32x32 CIFAR-10-style images only. {sizeLimitation}</p>
+           <p>{unseenWarning}</p>
+           <p>A shared architecture or training data between the detector and a generator may make detection look better than it is.</p>
+-          {results?.gate2 === 'cut' && <p>The Detector uses VAE fakes only, and the heatmap is the VAE error map. Leave-one-generator-out evaluation was not possible.</p>}
++          <p>The Detector was trained on two kinds of fakes: images from our VAE and images from our own small DDPM (a diffusion model). The diffusion fakes were harder for it to catch than the VAE fakes. The Detector also gets worse on a generator it never saw during training.</p>
+         </article>
+         <article className="lab-panel">
+           <h2>How to read the results</h2>
+@@ -133,7 +133,7 @@ export function LimitsPage() {
+         </div>
+       </section>
+       <section className="shell lab-section" aria-labelledby="model-cards">
+-        <div className="lab-section-head"><div><h2 id="model-cards">Model cards</h2><p>Measurements appear when a run exports its results, script, and configuration.</p></div></div>
++        <div className="lab-section-head"><div><h2 id="model-cards">Model cards</h2><p>Measurements appear when a run exports its results, script, and configuration. The three diffusion models (g-cddpm-fmnist, g-ddpm-cifar and d-ddpm-cifar) were each stopped by a time limit of about 35 minutes of training, so they are small and under-trained.</p></div></div>
+         <ModelCards results={results} />
+       </section>
+       <section className="shell lab-section" aria-labelledby="sources">
+diff --git a/web/src/pages.jsx b/web/src/pages.jsx
+index 22c1357..5ab462a 100644
+--- a/web/src/pages.jsx
++++ b/web/src/pages.jsx
+@@ -83,6 +83,7 @@ function ScoreResults({ result }) {
+         <div><dt>VAE score</dt><dd>{formatNumber(result.vae_score)}</dd></div>
+         <div><dt>CNN baseline score</dt><dd>{formatNumber(result.baseline_score)}</dd></div>
+       </dl>
++      <p className="field-hint">VAE score: how badly the VAE rebuilds the image. In our tests it was lower for VAE-made fakes than for real photos, so a higher number does not mean 'more AI'.</p>
+       <p className="field-hint">Input size {displayValue(result.input_size)} · Heatmap source {source || unavailable}</p>
+       <ResultImage image={result.heatmap_png_base64} label="Reconstruction heatmap" />
+       <ResultImage image={result.gradcam_png_base64} label="Grad-CAM" />
+@@ -223,11 +224,6 @@ function DetectorPage() {
+ }
+ 
+ const percent = new Intl.NumberFormat('en', { style: 'percent', maximumFractionDigits: 1 });
+-const auditRuns = [
+-  { id: 'a-500', label: '500 training images', size: 500 },
+-  { id: 'a-10000', label: '10,000 training images', size: 10000 },
+-  { id: 'a-500-dup', label: '500 training images with duplicates', size: 500 },
+-];
+ 
+ function validRate(rate) {
+   return Number.isFinite(rate) && rate >= 0 && rate <= 1;
+@@ -301,7 +297,6 @@ function AuditorPage() {
+   const experiments = results.data?.experiments || [];
+   const examples = results.data?.examples || [];
+   const demo = stubMode || isDemo(results.data);
+-  const extraExperiments = experiments.filter((experiment) => !auditRuns.some(({ id }) => experiment.name === id));
+ 
+   return (
+     <div className="lab-page auditor-page">
+@@ -316,14 +311,7 @@ function AuditorPage() {
+         <RequestStatus request={results} loadingText="Loading experiments…" />
+         {results.data && <ResultNote result={results.data} demoLabel="Demo dashboard" />}
+         <div className="experiment-grid">
+-          {auditRuns.map(({ id, label, size }) => {
+-            const experiment = experiments.find((item) => item.name === id);
+-            return <div key={id} className="audit-run">
+-              <p className="field-hint">{label}</p>
+-              <ExperimentChart demo={demo} experiment={experiment || { name: id, x_label: 'Training-set size', points: [{ x: size }] }} />
+-            </div>;
+-          })}
+-          {extraExperiments.map((experiment, index) => <ExperimentChart key={index} experiment={experiment} demo={demo} />)}
++          {experiments.length ? experiments.map((experiment, index) => <ExperimentChart key={index} experiment={experiment} demo={demo} />) : <p className="lab-panel empty-result">{placeholder}</p>}
+         </div>
+         <div className="lab-section-head"><h2>Nearest training images</h2></div>
+         {examples.length ? <AuditExamples examples={examples} demo={demo} /> : <p className="lab-panel empty-result">{placeholder}</p>}
+@@ -334,7 +322,7 @@ function AuditorPage() {
+             <h2>Check similarity</h2>
+             <form className="lab-upload" onSubmit={(event) => {
+               event.preventDefault();
+-              if (image) match.run({ file: image });
++              if (image) match.run({ image });
+             }}>
+               <UploadField id="auditor-upload" image={image} onImage={(selected) => { setImage(selected); match.reset(); }} />
+               <button type="submit" className="button lab-button" disabled={!image || match.loading}>Find similar images</button>

@@ -1,0 +1,100 @@
+{
+  "run_id": "detector_final",
+  "mode": "final",
+  "note": "proposed, to tune",
+  "stamp": null,
+  "dry_run": false,
+  "generators": [
+    "g-vae-cifar",
+    "g-ddpm-cifar"
+  ],
+  "fake_seeds": {
+    "g-vae-cifar": {
+      "train": 1042,
+      "calibration": 2042
+    },
+    "g-ddpm-cifar": {
+      "train": 1042,
+      "calibration": 2042
+    }
+  },
+  "seed": 42,
+  "real_parts_used": [
+    "clf_train",
+    "calibration"
+  ],
+  "final_test_used": false,
+  "images": {
+    "real_train": 20000,
+    "real_calibration": 5000,
+    "fake_train_per_generator": {
+      "g-vae-cifar": 20000,
+      "g-ddpm-cifar": 20000
+    },
+    "fake_calibration_per_generator": {
+      "g-vae-cifar": 5000,
+      "g-ddpm-cifar": 5000
+    }
+  },
+  "limit_images_per_set": 0,
+  "features": {
+    "vae": "d-vae-cifar: reconstruction error per pixel, KL (2 numbers)",
+    "ddpm": "d-ddpm-cifar: t_start 200, 20 DDIM steps; mean, p50, p90, p99 of the per-pixel error (4 numbers)"
+  },
+  "detectors": {
+    "lr_vae": "logistic regression on the 2 VAE numbers",
+    "lr_vae_ddpm": "logistic regression on all 6 numbers (the main detector)",
+    "cnn": "SmallCNN on raw pixels (the baseline)"
+  },
+  "logistic_regression": {
+    "standardised": true,
+    "random_state": 42,
+    "max_iter": 1000
+  },
+  "cnn": {
+    "epochs": 10,
+    "batch_size": 128,
+    "optimizer": "Adam",
+    "learning_rate": 0.001,
+    "loss": "BCEWithLogits",
+    "seed": 42
+  },
+  "threshold_rule": "high = 95th percentile of the real calibration AI-scores; low = 5th percentile of the fake calibration AI-scores (all generators); if low >= high both become their midpoint",
+  "thresholds": {
+    "lr_vae": {
+      "low": 0.14725735783576965,
+      "high": 0.6753630638122559
+    },
+    "lr_vae_ddpm": {
+      "low": 0.1437310427427292,
+      "high": 0.7324833869934082
+    },
+    "cnn": {
+      "low": 0.34905824065208435,
+      "high": 0.7524200081825256
+    }
+  },
+  "perturbations": {
+    "jpeg_quality": 50,
+    "blur_sigma": 1.0,
+    "noise_std_on_0_to_1_scale": 0.05
+  },
+  "weight_files": {
+    "lr_vae": {
+      "file": "detector_final_lr_vae.joblib",
+      "sha256": "d319880e987771fdcf4e70b27d5a6bf1186f6498c6424602a3867ed38596f12c"
+    },
+    "lr_vae_ddpm": {
+      "file": "detector_final_lr_vae_ddpm.joblib",
+      "sha256": "1f90ae5b6019734162d6789708eb3bee86b34ecaeb8e623d2751b13b8f4beca7"
+    },
+    "cnn": {
+      "file": "detector_final_cnn.pt",
+      "sha256": "7742e88aad05e6811f926ffe2a12af477421fe32b9516892735e4123026deed5"
+    }
+  },
+  "feature_model_files_sha256": {
+    "d-vae-cifar.pt": "c82b28040cb5a804ebdc8dfe4f3afe73136f3703cf14cb78da4a47865d3243f7",
+    "d-ddpm-cifar.pt": "a3bbf2fe6da81d30f5a861a2c8f3b5ad98040cea38c971fb2f6d69958d9b99b2"
+  }
+}

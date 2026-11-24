@@ -1,5 +1,9 @@
 {
-  "active_run": "detector_dev",
-  "thresholds_from": "results/detector_dev.json",
-  "note": "dev detector: trained on one weak generator (VAE fakes) only; replace by the final run when it exists"
+  "active_run": "detector_final",
+  "thresholds_from": "results/detector_final_train.json",
+  "features": [
+    "vae",
+    "ddpm"
+  ],
+  "note": "final detector: trained on VAE and diffusion fakes with diffusion features; the final test split was scored once (results/detector_final_final.json); all numbers proposed, to tune"
 }

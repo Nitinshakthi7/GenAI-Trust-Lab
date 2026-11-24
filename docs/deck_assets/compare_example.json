@@ -1,0 +1,13 @@
+{
+ "ssim": 0.654,
+ "dominant_colours": [
+  "gray 68%, orange 32%, yellow 1%",
+  "gray 68%, black 32%, yellow 1%"
+ ],
+ "mean_brightness": [
+  "0.54",
+  "0.37"
+ ],
+ "source": "heatmap_only",
+ "summary": "Image A is brighter than image B (0.54 vs 0.37), and image B has more edges (0% vs 3% of pixels). The main colours are gray 68%, orange 32%, yellow 1% in image A and gray 68%, black 32%, yellow 1% in image B. The structural similarity (SSIM) is 0.65. A low value is expected for photos that are not aligned, so it does not say how alike the subjects are."
+}

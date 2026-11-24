@@ -1,0 +1,40 @@
+{
+  "experiments": [
+    {
+      "name": "memorization vs training-set size",
+      "x_label": "training images",
+      "points": [
+        {
+          "x": 500,
+          "memorization_rate": null
+        },
+        {
+          "x": 10000,
+          "memorization_rate": null
+        }
+      ]
+    },
+    {
+      "name": "effect of duplicates (500 training images)",
+      "x_label": "duplicate share of the training set (%)",
+      "points": [
+        {
+          "x": 0,
+          "memorization_rate": null
+        },
+        {
+          "x": 30,
+          "memorization_rate": null
+        }
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "generated_png_base64": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAIOElEQVR4nB3WS6tG2VEG4KpatW778n1HEERw4v8QFBsVwYgEdKaTTAQRZwoiDgXJQCQTzcCJiKahO+mQmHRiuk0jiYI4FSdJTDohNiSc7+y9131VyckfKKiC96kXP/GXfzvMjSvoxGpOVXBdcEMU34mXejy3FXbxvei04ruM215rA5yOhxl2dh2DFmwXqYS74ywTA5mzlx1MSTySM9Rx1OJEMrGJNWR9GDYW5TEpkE1+rCPfIhyiTuOVM2hcTRUzrXtSMaY+HCyHb13N5AGo9eRgywx2pxpdAr48LfEmuLEjJYPc/NKbhWPvPBhmkds41dKEim4a0/ND7HAIOKk1tpBIIvneU5nYpyxs6gKtV8M4NTDUtiB1c6tWRKcZgdI1vG71gMWRTq2jOeuKS/IcNlcw+HyNSmNRq9P0LW5mKnBRNja7OnpwUKvXF7L90oyeLkUXcX+57tUQ477YVnk+WXlxrXldkgwanGTfTxw4sIY1TIjpTOBP31TPrH0Sk9Z7mrzo1AgP2BnHffqXJa5QjzQXRIDk+1Te4T71BSsOIbCnczR7sgTDg60WaZFmpvjlJtrbyJ/61dG1u+36/c//lF1KOlYh2YLQ2KvtVrp5mGXA3Iz47ULTUr7NbtdmV32qECl0P8KtmdiE3TqR5ywa+iXTG/7Ur1fANAW1jb/7lR9lCPap3FjBdLZI1TTFsZc5Vy6Rlr6XtRk82mOJW8XUg8TLNI2YAJSt1wQSipv7gNSps248MjFIlcRdwY7qR5whGXXkGpO1cl3ZZ3nkIWVMtaNJj2GZD8YUoT2BNQEhBo2hHZo6E05dhXXMWgpk6l469xuQgRgGcLUWm8/HRecUHKj3bZRNjbcDeicDHK1+6yv/9NSWVhe57BBxMxedMG9NniZAOErGLQBiqH/05Z89G1jo3sAffHmd1Pt8xloAJ/7eX3y64Wo6RpkDlX2CcTu7vnzw96xPp7Sfe+NjFYSCbFmaW0s2tDQysk0ZagyVxtE99GVnEt2uq0JAGzyPMjJhYGlBZ/aLHeqMSUfGG4wf/Ofbrxc2gNDHavcyx8EtGIK0m2bq1pcyh2qE3O8tF2WH0FYemW8jiOuzQ8K2p5DJB7PBAlUxTWMUZZmjuNP3cJA/zao//Je3TB2dqYYHdXuJLTS0eePZnEPty9L1Rx+8c8smqYx1yJWtQaUbmWspSuWcDTRZzlaPOfc4v/9fX9WpfmxFtR9+VPPf//Huuh4w/LkWCK7H2gI+XsJAAxd/+O9voj2+9cFnXXIx930LGV/6ORqOtKw0ME+T14ybHST3b3/9za4i++v6FnnbcjC8JixVI3Q8oxhczn25Rrxj5+373/jniXe8LAr+4JtvihvQkJTVKIx94xeizRBQ9Ydp4cfvvTnR4bQ+KxVgCDhX288K+L333q+DVrkgKfkLnLGlfPjNf5jNxq7Dt+G7vdbvvP9uC6/J4J39vdcayQyIMha7/8+/fW40RemazzEuEzJrP3Jrm2X/vFn48VfemqtbYy1qEPDDr7299PVOXXxTjmr42kvs/aP3P/N/X3vXgfYZOAyyfpx7+PCrn9Mq3U7XAJeBqPDAs5fV1Sh1ghfUtPJHX3jnUm+s/PBLn81qz3pO1Q7B5radfkU0Rk21yvKd9z7DZmatROLXIiZkt4/oxU3D1jSzXAuujjW6S9VGnRX3HNtePev3Pv/Wg3Tl/hStxKHSJa59fUlFEi3VXDJGV/fdd/7xCSN+4s8//dF7X5DVXJfIE7NMBWDhKL2UNsJNHKxtHhUZD41eOq7dzNCLLtp/wpmpMdt0a6i6leXQxg69agMUw/Ttb7x9LGamKnHY0rfpVIPLSUDQbjY/pBwTJrIBxgjogMxaGPSe890/Xj9BQxSzT/yzX/r5irjEIWzLUBXRlvCNN34bIANsXGWi6mp8GxzzeUwR/6e/89N//cVHz1V5tAX3vKXYx0mrFzv7s6etxz/8jeC6G4aQZ0+sZP7qX/93hbUVUWfwF3/5t/ZRCoZmprWmX8VG/ye/+TN6UJEyg3PcuarVVczz6dAYjDXUAhJltVQPnkgmiq2aJeHmRNQm8zdf+u5DmPaAH/uFj19ERtsf/9pNOWAoWExBiezq5NJffyCxB23Dt6UIsjPs0R1H2xZC5KOdS3TlpYEGRba+e6PKWCHZT379gW9/8nfvIwpfJppHl6XFuVj7KLTKC68869Ky6m1YbQ5CFqDRFKwDTWaCiLrF5IGT1U/yzUy+zuE4DEPeT5yMQztNpl17w9ytOD3zgSPmaG7JTE3Iim3VIUmKN3S4yPMAFXiNKFPF7hpbU6X1HgGaC24MwU7d5TjIEkok8edAS6T1BsZ4t2pb8iZaJ9EIsQtO8uMnwjzRZC+G3YRb3ehhMofZVAwO4NFG93LuXPZwKrnZyCIjGRhQKVm4T+xZlBpSWWd+nc2QyS6PNtRRvMyEYvThaxUeFx10Y3cc5IqCrvEhViXDU7buecb9BGKSGTT3mRYAMcvDIC1bnc1KaHW5KS51s6mmGPDlVUyznFL47tHHsIauLvXjvqx1LaaOGjXOMObzGHCT1hepgc28TvDOl63TAcqtAEEME07/Ys6okRzjjTFPsE1tnMw46ms7nRW2WB/tBjVbi+eNd5Xn2SkyILVR7MtugVpcbruOot2sUUKIXXlJHCSa1S0jXt4RnVlJYc7BLzUd2soaXNbNtCJ3ul4l0AB1wpnia6kMMK864hFbBuolv5qnVNKVX/2g5HSrqZDYfq3JJZk+WIXE5HncQteqIeUiziT1+gLB5+Zd8TQuu5jRjL1CW2GdVoun/wcmv+rqhYuvRgAAAABJRU5ErkJggg==",
+      "nearest_png_base64": "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",
+      "distance": null
+    }
+  ],
+  "note": "stub: layout preview. This pair uses illustrations and experiment measurements have not been added."
+}

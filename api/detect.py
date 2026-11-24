@@ -6,7 +6,8 @@
 #   2. load the Detector the first time it is needed and keep it (503 if its files are missing
 #      or are being written right now; the next request tries again)
 #   3. score the picture, then add the warning (only for pictures that are not 32x32) and the note
-# The note is always in the answer: this is the dev detector, trained on one weak generator only.
+# The note is always in the answer: while the dev detector is active (trained on one weak generator only) it says so;
+# when the final detector is active, FINAL_NOTE is used instead.
 
 import io
 import threading
@@ -23,6 +24,11 @@ WARNING = ("This detector was trained only on 32x32 CIFAR-10-style images. "
 NOTE = ("Dev detector: it was trained on only one weak generator (blurry VAE fakes), so its scores say nothing "
         "about diffusion fakes or other unseen generators. This is a work-in-progress check, not a result. "
         "Grad-CAM shows where the CNN baseline looked; it does not prove why the image is real or AI.")
+
+# Used instead of NOTE when configs/detector_active.json points to the FINAL detector (model/run_final_detector.py).
+FINAL_NOTE = ("Final detector: trained on VAE fakes and diffusion fakes, with VAE and diffusion features. How well it works on "
+              "a generator it has never seen is a finding, not a promise, and it is not shown here. All numbers are proposed, to tune. "
+              "Grad-CAM shows where the CNN baseline looked; it does not prove why the image is real or AI.")
 
 _detector = None                    # the loaded Detector (made on the first request)
 _load_lock = threading.Lock()       # only one request loads it
@@ -57,7 +63,8 @@ def open_picture(data):
 def detect(data):
     """Build the whole /detect answer (see api/contract.json). The upload is already checked."""
     picture = open_picture(data)                            # bad pictures are answered before any model is loaded
-    answer = get_detector().score_image(picture)
+    detector = get_detector()
+    answer = detector.score_image(picture)
     answer["warning"] = WARNING if answer["out_of_scope"] else None
-    answer["note"] = NOTE
+    answer["note"] = FINAL_NOTE if detector.final else NOTE
     return answer

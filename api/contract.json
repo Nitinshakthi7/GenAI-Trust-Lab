@@ -16,24 +16,42 @@
         "vae_score": 0.4,
         "baseline_score": 0.5,
         "heatmap_png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
-        "heatmap_source": "vae",
-        "gradcam_png_base64": null,
+        "heatmap_source": "ddpm",
+        "gradcam_png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
         "input_size": "32x32",
         "out_of_scope": false,
         "warning": null,
-        "note": "stub: fixed example answer"
+        "note": "Final detector: trained on VAE fakes and diffusion fakes. Example text only, not a result. Grad-CAM shows where the CNN baseline looked; it does not prove why the image is real or AI."
       }
     },
     "GET /audit/results": {
       "response": {
         "experiments": [
           {
-            "name": "memorization vs training-set size (one point per run)",
-            "x_label": "training-set size",
+            "name": "memorization vs training-set size",
+            "x_label": "training images",
             "points": [
               {
                 "x": 500,
-                "memorization_rate": 0.2
+                "memorization_rate": null
+              },
+              {
+                "x": 10000,
+                "memorization_rate": null
+              }
+            ]
+          },
+          {
+            "name": "effect of duplicates (500 training images)",
+            "x_label": "duplicate share of the training set (%)",
+            "points": [
+              {
+                "x": 0,
+                "memorization_rate": null
+              },
+              {
+                "x": 30,
+                "memorization_rate": null
               }
             ]
           }
@@ -49,7 +67,7 @@
       }
     },
     "POST /audit/check": {
-      "request": "multipart: image",
+      "request": "multipart: image, run (optional: a-500, a-10000 or a-500-dup; default a-500)",
       "response": {
         "nearest": [
           {
@@ -60,7 +78,7 @@
           }
         ],
         "flag": "not_flagged",
-        "note": "stub: similarity only, not legal copying"
+        "note": "Example text only, not a result. Run a-500: your image was compared with 500 different training images by pixel distance (a lower distance means more similar). It is a possible copy only if the nearest distance is below 11.82, the 1st percentile of the distances of real images the model never saw. This measures pixel similarity only; it is not legal copying."
       }
     },
     "POST /compare": {
@@ -71,7 +89,7 @@
           "lpips": null
         },
         "diff_heatmap_png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
-        "regions_png_base64": null,
+        "regions_png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
         "feature_table": [
           {
             "feature": "mean brightness",
@@ -84,6 +102,24 @@
             "image_a": "orange 60%, white 25%, brown 15%",
             "image_b": "black 70%, grey 20%, white 10%",
             "does_not_prove": "Descriptive only; background colours count too."
+          },
+          {
+            "feature": "CNN feature similarity (ResNet-18, whole image)",
+            "image_a": "0.7",
+            "image_b": "0.7",
+            "does_not_prove": "Descriptive only."
+          },
+          {
+            "feature": "CNN best-match similarity (A to B, B to A)",
+            "image_a": "0.6",
+            "image_b": "0.5",
+            "does_not_prove": "Descriptive only."
+          },
+          {
+            "feature": "CNN top guesses (ImageNet, may be wrong)",
+            "image_a": "tabby 62%, tiger cat 20%, Egyptian cat 9%",
+            "image_b": "Persian cat 70%, Angora 10%, lynx 5%",
+            "does_not_prove": "Descriptive only."
           }
         ],
         "differences": [

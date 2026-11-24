@@ -1,0 +1,82 @@
+[
+  {
+    "file": "fake/fake_ddpm_0.png",
+    "label": "Made by our DDPM 1"
+  },
+  {
+    "file": "fake/fake_ddpm_1.png",
+    "label": "Made by our DDPM 2"
+  },
+  {
+    "file": "fake/fake_ddpm_2.png",
+    "label": "Made by our DDPM 3"
+  },
+  {
+    "file": "fake/fake_ddpm_3.png",
+    "label": "Made by our DDPM 4"
+  },
+  {
+    "file": "fake/fake_ddpm_4.png",
+    "label": "Made by our DDPM 5"
+  },
+  {
+    "file": "fake/fake_vae_0.png",
+    "label": "Made by our VAE 1"
+  },
+  {
+    "file": "fake/fake_vae_1.png",
+    "label": "Made by our VAE 2"
+  },
+  {
+    "file": "fake/fake_vae_2.png",
+    "label": "Made by our VAE 3"
+  },
+  {
+    "file": "fake/fake_vae_3.png",
+    "label": "Made by our VAE 4"
+  },
+  {
+    "file": "fake/fake_vae_4.png",
+    "label": "Made by our VAE 5"
+  },
+  {
+    "file": "real/real_0.png",
+    "label": "Real photo 1"
+  },
+  {
+    "file": "real/real_1.png",
+    "label": "Real photo 2"
+  },
+  {
+    "file": "real/real_2.png",
+    "label": "Real photo 3"
+  },
+  {
+    "file": "real/real_3.png",
+    "label": "Real photo 4"
+  },
+  {
+    "file": "real/real_4.png",
+    "label": "Real photo 5"
+  },
+  {
+    "file": "real/real_5.png",
+    "label": "Real photo 6"
+  },
+  {
+    "file": "real/real_6.png",
+    "label": "Real photo 7"
+  },
+  {
+    "file": "real/real_7.png",
+    "label": "Real photo 8"
+  },
+  {
+    "file": "real/real_8.png",
+    "label": "Real photo 9"
+  },
+  {
+    "file": "real/real_9.png",
+    "label": "Real photo 10"
+  }
+]

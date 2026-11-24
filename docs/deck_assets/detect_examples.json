@@ -1,0 +1,26 @@
+{
+ "real": {
+  "label": "unclear",
+  "score": 0.2733,
+  "vae_score": 200.3,
+  "baseline_score": 0.1002,
+  "heatmap_source": "ddpm",
+  "input_size": "32x32",
+  "out_of_scope": false,
+  "warning": null,
+  "note": "Final detector: trained on VAE fakes and diffusion fakes, with VAE and diffusion features. How well it works on a generator it has never seen is a finding, not a promise, and it is not shown here. All numbers are proposed, to tune. Grad-CAM shows where the CNN baseline looked; it does not prove why the image is real or AI.",
+  "picture": "CIFAR-10 test image, calibration part, number 1"
+ },
+ "fake": {
+  "label": "real",
+  "score": 0.1352,
+  "vae_score": 133.1,
+  "baseline_score": 0.0427,
+  "heatmap_source": "ddpm",
+  "input_size": "32x32",
+  "out_of_scope": false,
+  "warning": null,
+  "note": "Final detector: trained on VAE fakes and diffusion fakes, with VAE and diffusion features. How well it works on a generator it has never seen is a finding, not a promise, and it is not shown here. All numbers are proposed, to tune. Grad-CAM shows where the CNN baseline looked; it does not prove why the image is real or AI.",
+  "picture": "fake from fakes/g-ddpm-cifar_fakes.npz, calibration part, number 0"
+ }
+}

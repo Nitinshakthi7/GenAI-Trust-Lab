@@ -10,42 +10,72 @@
 #   - every PNG carries its provenance text note
 #   - bad requests give 400 with {"error": ...}, an unknown generator gives 404,
 #     a model that is not ready gives 503
-#   - the three stub answers carry the X-Stub: true header and a "stub:" note
+#   - no endpoint is a stub any more: no answer has the X-Stub header
 #   - POST /compare is real (no X-Stub header) and gives the right answers for pictures where we
 #     know the answer in advance (same image twice, orange vs black, shifted copy, a cat-like pair,
-#     two real CIFAR-10 calibration images), and 400 for bad uploads
-#   - POST /detect is real (dev detector, no X-Stub header): a real CIFAR-10 calibration image, a VAE
+#     two real CIFAR-10 calibration images), and 400 for bad uploads. If the pretrained ResNet-18 weights are in the
+#     torch cache, regions_png_base64 must be a valid PNG and the 3 CNN rows must be in the table (else regions is null)
+#   - POST /detect is real (no X-Stub header): a real CIFAR-10 calibration image, a VAE
 #     fake and a 64x64 photo all answer 200 with the contract's field names (the 64x64 photo is
-#     out_of_scope with the exact warning), bad uploads give 400, missing detector files give 503
+#     out_of_scope with the exact warning), bad uploads give 400, missing detector files give 503.
+#     These checks read configs/detector_active.json to know WHICH detector is active:
+#       dev detector   -> heatmap_source vae and a note starting 'Dev detector'
+#       final detector -> heatmap_source ddpm (vae only if the diffusion weights cannot be loaded; a WARNING is
+#                         printed then), a note starting 'Final detector', any label for a real image (real, ai or
+#                         unclear are all honest), and the CNN's baseline_score above 0.5 on average for 10 VAE fakes
+#                         and 10 diffusion fakes (calibration pictures only)
+#   - POST /detect with a FINAL detector (a tiny made-up run in a temp folder, random weights; only the code path is
+#     tested): the pointer's features vae + ddpm select it, the note is the final note, the heatmap is the diffusion one
+#     (heatmap_source ddpm; skipped with a message if weights/d-ddpm-cifar.pt cannot be read right now), and a missing or
+#     broken diffusion file falls back to the VAE heatmap (heatmap_source vae) and comes back by itself
 #   - Grad-CAM (model/gradcam.py): the map is 32 x 32, its values are 0 to 1, it is not one flat colour,
 #     and /detect now returns a real gradcam_png_base64 (a 128 x 128 PNG)
 #   - POST /evidence is real (EXIF only, no X-Stub header): a JPG with EXIF and GPS gives the camera make and
 #     model, says "GPSInfo: present (coordinates hidden)" and never returns the GPS numbers; a PNG without EXIF gives
 #     found false; long values are cut, binary tags are skipped, at most 30 tags; bad uploads give 400
+#   - GET /audit/results is real (no X-Stub header): with no results file it answers the placeholder (two planned
+#     experiments, every rate null, no examples, a note starting with '[PLACEHOLDER - not measured yet]'); with a
+#     results file (made here from tiny random pictures) it answers the file unchanged with the contract's field
+#     names, and each closest-pair example has its three fields; a broken file gives 500 with {"error": ...}
+#   - POST /audit/check is real (no X-Stub header, a note that does not start with 'stub:'): a training image of run a-500
+#     (read straight from the CIFAR-10 files) gives distance 0, flag possible_copy, and its own picture back; the training-image
+#     count equals the results file; the 3 nearest come back ranked, smallest first; random noise is not_flagged; a 64x64 picture
+#     and a 30x20 JPG are resized (the note says so); a bad `run` or a missing image is 400; bad uploads are 400; a run whose
+#     results file is missing (a temporary folder is used, nothing is renamed) is 503, a broken one 500; every other run that
+#     already has a results file is checked the same way (count, distance 0)
 #   - the CORS header is present for the Vite website address
 # The final test split of CIFAR-10 is never opened here: real pictures come from the 'calibration' part only.
 
 import base64
 import io
 import json
+import os
 import pickle
 import tempfile
 import time
 from pathlib import Path
 
+import joblib
 import numpy as np
 import torch
 from fastapi.testclient import TestClient
 from PIL import Image
 from PIL.ExifTags import TAGS
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
-from api import detect, generators
+from api import audit, detect, generators
 from api.common import MAX_UPLOAD_BYTES, PNG_START
 from api.main import app
-from model import detector
+from model import compare_cnn, detector, features
+from model.audit_summary import build_summary
+from model.auditor import closest_pairs, nearest_distances
 from model.data import get_part
+from model.cnn import SmallCNN
 from model.gradcam import gradcam
 from model.make_fakes import to_float
+from model.train_auditor_run import RUNS, subset_rows
 
 torch.set_num_threads(2)         # keep the computer usable while other things run
 ROOT = Path(__file__).resolve().parent.parent
@@ -104,12 +134,7 @@ def check_endpoints():
         reply = call(endpoint)
         check(reply.status_code == 200, f"{endpoint} answers 200 (got {reply.status_code}: {reply.text[:200]})")
         check(same_names(reply.json(), CONTRACT[endpoint]["response"]), f"{endpoint} has the contract's field names")
-        is_stub = endpoint not in ("GET /health", "GET /generators", "POST /generate", "POST /compare", "POST /detect", "POST /evidence")
-        if is_stub:
-            check(reply.headers.get("X-Stub") == "true", f"{endpoint} has the header X-Stub: true")
-            check(reply.json()["note"].startswith("stub:"), f"{endpoint} note starts with 'stub:'")
-        else:
-            check("X-Stub" not in reply.headers, f"{endpoint} is real, so no X-Stub header")
+        check("X-Stub" not in reply.headers, f"{endpoint} is real, so no X-Stub header")
     check(client.get("/health").json() == {"status": "ok"}, "/health says ok")
     print(f"endpoints: all {len(CONTRACT)} answer with the contract's field names")
 
@@ -259,6 +284,14 @@ def check_compare():
     rows = ["mean brightness", "average colour (R,G,B)", "colour spread", "sharpness", "edge amount", "texture",
             "original size", "dominant colours", "colour histogram distance"]
     example = CONTRACT["POST /compare"]["response"]
+    cnn_rows = ["CNN feature similarity (ResNet-18, whole image)", "CNN best-match similarity (A to B, B to A)",
+                "CNN top guesses (ImageNet, may be wrong)"]
+    try:
+        compare_cnn.load()                  # the ResNet-18 weights come from the torch cache; no download
+        cnn_ready = True
+    except Exception as error:
+        cnn_ready = False
+        print(f"WARNING: ResNet-18 weights cannot be loaded ({error}); checking /compare without the CNN part")
 
     # (a) the same picture twice
     noise = np.random.default_rng(1).integers(0, 256, (224, 224, 3))
@@ -297,7 +330,7 @@ def check_compare():
     check("black" in table["dominant colours"][1], f"cat-like pair: B has black (got {table['dominant colours'][1]})")
     check(body["source"] == "heatmap_only" and body["differences"] == [], "use_words true: still heatmap_only, no differences")
     check(body["summary"].startswith("Words are not enabled on this server (no vision API configured)."), "use_words true: summary starts with the notice")
-    check(body["note"] == example["note"], "the note is the contract's note")
+    check(body["note"].startswith(example["note"]), "the note starts with the contract's note")
     print(f"compare cat-like pair: dominant colours {table['dominant colours']}")
 
     # (e) two real CIFAR-10 test images: every field, as the contract says
@@ -305,9 +338,16 @@ def check_compare():
     reply = compare_pictures(first, second)
     body = reply.json()
     check(reply.status_code == 200 and same_names(body, example), f"{where}: 200 with the contract's field names")
-    check([r["feature"] for r in body["feature_table"]] == rows, "the feature table has the 9 rows")
+    check([r["feature"] for r in body["feature_table"]] == rows + (cnn_rows if cnn_ready else []),
+          f"the feature table has the 9 rows{' and the 3 CNN rows' if cnn_ready else ''}")
     check(all(isinstance(v, str) and v for r in body["feature_table"] for v in r.values()), "every table cell is a text")
-    check(body["similarity"]["lpips"] is None and body["regions_png_base64"] is None, "lpips and regions are null (not built)")
+    check(body["similarity"]["lpips"] is None, "lpips is null (not built)")
+    if cnn_ready:
+        regions = decode({"png_base64": body["regions_png_base64"]})
+        check(regions.format == "PNG" and regions.size == (448, 224), f"CNN loaded: regions is a valid 448 x 224 PNG (got {regions.format} {regions.size})")
+        check("pretrained ResNet-18" in body["note"], "CNN loaded: the note says the CNN is pretrained")
+    else:
+        check(body["regions_png_base64"] is None and "CNN part is not available" in body["note"], "no CNN: regions null and the note says so")
     check(body["source"] == "heatmap_only" and 2 <= body["summary"].count(". ") + 1 <= 4, "source heatmap_only, summary is 2 to 4 sentences")
     check(not body["diff_heatmap_png_base64"].startswith("data:"), "heatmap is plain base64")
     check(decode({"png_base64": body["diff_heatmap_png_base64"]}).size == (224, 224), "heatmap is 224 x 224")
@@ -353,9 +393,16 @@ def check_not_ready():
     print("not ready: missing and broken weights files give 503")
 
 
-# ------------------------------------------------------- 6. POST /detect (the dev detector)
+# ------------------------------------------------------- 6. POST /detect (the dev OR the final detector)
 
 WARNING_TEXT = "This detector was trained only on 32x32 CIFAR-10-style images. Results on other photos are not meaningful."
+REAL_POINTER = detector.ACTIVE_FILE      # configs/detector_active.json (some checks below swap detector.ACTIVE_FILE for a moment)
+
+
+def final_is_active():
+    """True if configs/detector_active.json says the FINAL detector is in use (its features include 'ddpm'),
+    False for the dev detector. Read fresh each time, so the checks always match what /detect really does."""
+    return "ddpm" in json.loads(REAL_POINTER.read_text(encoding="utf-8")).get("features", ["vae"])
 
 
 def send_detect(picture, kind="PNG"):
@@ -386,14 +433,24 @@ def check_answer(reply, what):
     check(body["label"] in ("real", "ai", "unclear"), f"{what}: label is real, ai or unclear")
     check(0 <= body["score"] <= 1 and 0 <= body["baseline_score"] <= 1, f"{what}: score and baseline_score are in [0,1]")
     check(isinstance(body["vae_score"], float) and body["vae_score"] >= 0, f"{what}: vae_score is a number, 0 or more")
-    check(body["heatmap_source"] == "vae", f"{what}: heatmap_source is vae")
+    final = final_is_active()
+    if not final:
+        check(body["heatmap_source"] == "vae", f"{what}: heatmap_source is vae")
+    elif body["heatmap_source"] == "vae":      # allowed only when the diffusion model could not be loaded
+        check(detect._detector.ddpm is None, f"{what}: heatmap_source is vae although the diffusion weights are loaded")
+        print(f"WARNING: {what}: the diffusion weights (weights/d-ddpm-cifar.pt) cannot be loaded, so the heatmap is the VAE one")
+    else:
+        check(body["heatmap_source"] == "ddpm", f"{what}: heatmap_source is ddpm (got {body['heatmap_source']})")
     heatmap = body["heatmap_png_base64"]
     check(not heatmap.startswith("data:") and decode({"png_base64": heatmap}).size == (128, 128), f"{what}: heatmap is a plain base64 128 x 128 PNG")
     cam = body["gradcam_png_base64"]
     check(isinstance(cam, str) and not cam.startswith("data:"), f"{what}: gradcam is plain base64 text (no data: prefix)")
     cam_picture = decode({"png_base64": cam})
     check(cam_picture.format == "PNG" and cam_picture.size == (128, 128), f"{what}: gradcam decodes to a 128 x 128 PNG")
-    check(body["note"].startswith("Dev detector") and "not a result" in body["note"], f"{what}: the honesty note is there")
+    if final:
+        check(body["note"].startswith("Final detector"), f"{what}: the note starts with 'Final detector'")
+    else:
+        check(body["note"].startswith("Dev detector") and "not a result" in body["note"], f"{what}: the honesty note is there")
     check("Grad-CAM shows where the CNN baseline looked; it does not prove why the image is real or AI." in body["note"],
           f"{what}: the Grad-CAM sentence is in the note")
     return body
@@ -415,6 +472,22 @@ def check_detect():
     body = check_answer(send_detect(fake), "VAE fake")
     check(body["out_of_scope"] is False and body["warning"] is None, "VAE fake: in scope, no warning")
     print(f"detect VAE fake (calibration 0): label {body['label']}, score {body['score']}, baseline {body['baseline_score']}, vae_score {body['vae_score']}")
+
+    if final_is_active():
+        # The CNN baseline separates fakes from real pictures well on calibration data, so the MEAN baseline_score of
+        # 10 fakes must be above 0.5 (a mean, so one odd picture cannot fail the check). Two kinds of fakes.
+        for name in ("g-vae-cifar", "g-ddpm-cifar"):
+            file = ROOT / "fakes" / f"{name}_fakes.npz"
+            if not file.exists():
+                print(f"detect final: {file.name} not found, its fake-picture check is skipped")
+                continue
+            with np.load(file) as saved:
+                pictures = saved["calibration"][:10]                  # only the calibration array is read, never 'test'
+            start = time.time()
+            scores = [send_detect(Image.fromarray(p)).json()["baseline_score"] for p in pictures]
+            mean = sum(scores) / len(scores)
+            check(len(scores) == 10 and mean > 0.5, f"final detector: mean baseline_score of 10 {name} calibration fakes is above 0.5 (got {mean:.3f})")
+            print(f"detect final, 10 {name} calibration fakes: mean baseline_score {mean:.3f}, {(time.time() - start) / len(scores):.2f} s per picture")
 
     body = check_answer(send_detect(real.resize((64, 64), Image.Resampling.BILINEAR)), "64x64 photo")
     check(body["out_of_scope"] is True and body["input_size"] == "64x64", "64x64 photo: out_of_scope true, input_size 64x64")
@@ -454,12 +527,73 @@ def check_detect_not_ready():
             detector.ACTIVE_FILE = real_pointer
             detector.WEIGHTS_DIR = folder                     # no detector_lr.joblib in here
             check_error(post(), 503, "/detect: the logistic regression file is missing")
-            (folder / "detector_lr.joblib").write_bytes(b"this is not a real weights file")
+            first_file = f"{json.loads(real_pointer.read_text(encoding='utf-8'))['active_run']}_lr_vae.joblib" if final_is_active() else "detector_lr.joblib"
+            (folder / first_file).write_bytes(b"this is not a real weights file")      # the first file the active detector reads
             check_error(post(), 503, "/detect: the logistic regression file is broken")
         finally:
             detector.ACTIVE_FILE, detector.WEIGHTS_DIR, detect._detector = real_pointer, real_weights, real_detector
     check(post().status_code == 200, "/detect works again with the real files")
     print("detect not ready: missing threshold or weights files and a broken file give 503")
+
+
+def make_made_up_final_run(folder):
+    """A tiny made-up 'final run' in `folder` (random weights, made-up thresholds). It only tests the code path:
+    the numbers it gives mean nothing. The real one is made by model/run_final_detector.py."""
+    rng = np.random.default_rng(0)
+    labels = np.array([0, 1] * 20)
+    for name, columns in (("lr_vae", 2), ("lr_vae_ddpm", 6)):
+        model = make_pipeline(StandardScaler(), LogisticRegression()).fit(rng.normal(size=(40, columns)), labels)
+        joblib.dump(model, folder / f"detector_final_{name}.joblib")
+    torch.save(SmallCNN().state_dict(), folder / "detector_final_cnn.pt")
+    limits = {"low_threshold": 0.3, "high_threshold": 0.7}
+    report = {"run_id": "detector_final", "calibration_report": {name: limits for name in ("lr_vae", "lr_vae_ddpm", "cnn")}}
+    (folder / "results.json").write_text(json.dumps(report))
+    pointer = {"active_run": "detector_final", "thresholds_from": str(folder / "results.json"), "features": ["vae", "ddpm"]}
+    (folder / "pointer.json").write_text(json.dumps(pointer))
+
+
+def check_detect_final():
+    """POST /detect when configs/detector_active.json points to a FINAL run (features vae + ddpm): the diffusion
+    heatmap, the final note, and the fallback to the VAE heatmap when the diffusion file cannot be read."""
+    real, fake, index = detect_pictures()
+    saved = detector.ACTIVE_FILE, detector.WEIGHTS_DIR, features.WEIGHTS_DIR, detect._detector
+    with tempfile.TemporaryDirectory() as folder:
+        folder = Path(folder)
+        make_made_up_final_run(folder)
+        try:
+            detector.ACTIVE_FILE, detector.WEIGHTS_DIR, detect._detector = folder / "pointer.json", folder, None
+            start = time.time()
+            reply = send_detect(real)
+            seconds = time.time() - start
+            body = reply.json()
+            check(reply.status_code == 200 and same_names(body, CONTRACT["POST /detect"]["response"]),
+                  f"final detector: 200 with the contract's field names (got {reply.status_code}: {reply.text[:200]})")
+            check(detect._detector.final is True, "final detector: the pointer's features vae + ddpm select the final detector")
+            check(body["note"].startswith("Final detector") and "Grad-CAM shows where the CNN baseline looked" in body["note"],
+                  "final detector: the final note (not the dev note) with the Grad-CAM sentence")
+            check(body["label"] in ("real", "ai", "unclear") and 0 <= body["score"] <= 1 and 0 <= body["baseline_score"] <= 1,
+                  "final detector: label, score and baseline_score are valid")
+            if detect._detector.ddpm is None:
+                print("final detector: the diffusion model weights/d-ddpm-cifar.pt cannot be read right now; the 'ddpm' heatmap check is skipped")
+            else:
+                check(body["heatmap_source"] == "ddpm", "final detector: heatmap_source is ddpm")
+                check(decode({"png_base64": body["heatmap_png_base64"]}).size == (128, 128), "final detector: the ddpm heatmap is a 128 x 128 PNG")
+                check(send_detect(real).json() == body, "final detector: the same picture twice gives the same answer")
+                print(f"detect final detector (made-up run): heatmap_source {body['heatmap_source']}, first request incl. loading {seconds:.2f} s")
+                # the diffusion file cannot be read (missing, then half-written): VAE heatmap and VAE-only score
+                detect._detector.ddpm = None
+                features.WEIGHTS_DIR = folder
+                for what in ("missing", "broken"):
+                    if what == "broken":
+                        (folder / "d-ddpm-cifar.pt").write_bytes(b"half written file")
+                    body = send_detect(real).json()
+                    check(body["heatmap_source"] == "vae" and body["label"] in ("real", "ai", "unclear") and 0 <= body["score"] <= 1,
+                          f"final detector, diffusion file {what}: falls back to the VAE heatmap and score")
+                features.WEIGHTS_DIR = saved[2]
+                check(send_detect(real).json()["heatmap_source"] == "ddpm", "final detector: the diffusion model is picked up again by itself")
+        finally:
+            detector.ACTIVE_FILE, detector.WEIGHTS_DIR, features.WEIGHTS_DIR, detect._detector = saved
+    print("detect final detector: final note, ddpm heatmap and the fallback as expected")
 
 
 # ------------------------------------------------------- 7. Grad-CAM (model/gradcam.py)
@@ -548,6 +682,204 @@ def check_evidence():
     print("evidence: EXIF JPG, PNG without EXIF, many tags and bad uploads all as expected")
 
 
+# ------------------------------------------------------- 9. GET /audit/results (real; placeholder until the runs exist)
+
+PLACEHOLDER_START = "[PLACEHOLDER - not measured yet]"
+PAIR_NAMES = {"generated_png_base64", "nearest_png_base64", "distance"}
+
+
+def get_audit(path):
+    """GET /audit/results while AUDIT_RESULTS_FILE points at `path` (the setting is removed again afterwards)."""
+    os.environ["AUDIT_RESULTS_FILE"] = str(path)
+    try:
+        return client.get("/audit/results")
+    finally:
+        os.environ.pop("AUDIT_RESULTS_FILE", None)
+
+
+def check_audit():
+    example = CONTRACT["GET /audit/results"]["response"]
+    with tempfile.TemporaryDirectory() as folder:
+        folder = Path(folder)
+
+        # (a) no results file yet: the placeholder
+        reply = get_audit(folder / "no_such_file.json")
+        body = reply.json()
+        check(reply.status_code == 200 and same_names(body, example), f"audit placeholder: 200 with the contract's field names (got {reply.status_code})")
+        check("X-Stub" not in reply.headers, "/audit/results is real, so no X-Stub header")
+        rates = [point["memorization_rate"] for experiment in body["experiments"] for point in experiment["points"]]
+        check(len(body["experiments"]) == 2 and rates == [None] * 4, f"audit placeholder: two experiments, every rate null (got {rates})")
+        check(body["examples"] == [], "audit placeholder: no examples")
+        check(body["note"].startswith(PLACEHOLDER_START), "audit placeholder: the note starts with the PLACEHOLDER words")
+        check("not decide legal copying" in body["note"], "audit placeholder: the note says similarity only, not legal copying")
+        print(f"audit placeholder: {[e['name'] for e in body['experiments']]}, note: {body['note']}")
+
+        # (b) a results file made from tiny random pictures (the first 'generated' picture is an exact copy of a training one)
+        g = torch.Generator().manual_seed(0)
+        train = torch.rand(20, 3, 32, 32, generator=g) * 2 - 1
+        generated = torch.cat([train[:1], torch.rand(5, 3, 32, 32, generator=g) * 2 - 1])
+        pairs = closest_pairs(generated, train, k=3)
+        runs = {"a-500": {"memorization_rate": 0.25, "examples": pairs}, "a-10000": {"memorization_rate": 0.0625, "examples": pairs}}
+        results_file = folder / "audit_results.json"
+        results_file.write_text(json.dumps(build_summary(runs)), encoding="utf-8")        # a-500-dup is "not done yet"
+        reply = get_audit(results_file)
+        body = reply.json()
+        check(reply.status_code == 200 and same_names(body, example), f"audit results file: 200 with the contract's field names (got {reply.status_code})")
+        check(body == json.loads(results_file.read_text(encoding="utf-8")), "audit results file: the answer is the file, unchanged")
+        check("X-Stub" not in reply.headers, "audit results file: no X-Stub header")
+        points = [[p["memorization_rate"] for p in e["points"]] for e in body["experiments"]]
+        check(points == [[0.25, 0.0625], [0.25, None]], f"audit results file: the rates are the file's (got {points})")
+        check(len(body["examples"]) == 6 and all(set(pair) == PAIR_NAMES for pair in body["examples"]), "audit results file: 6 examples with the three field names")
+        check(body["examples"][0]["distance"] == 0.0, "audit results file: the exact copy has distance 0")
+        for key in ("generated_png_base64", "nearest_png_base64"):
+            picture = decode({"png_base64": body["examples"][0][key]})
+            check(picture.format == "PNG" and picture.size == (128, 128), f"audit results file: {key} is a 128 x 128 PNG")
+            check(not body["examples"][0][key].startswith("data:"), f"audit results file: {key} is plain base64")
+        print(f"audit results file: rates {points}, {len(body['examples'])} examples, distances {[p['distance'] for p in body['examples'][:3]]}")
+
+        # (c) a broken results file gives 500 with {"error": ...}
+        good = json.loads(results_file.read_text(encoding="utf-8"))
+        missing_field = json.loads(results_file.read_text(encoding="utf-8"))
+        del missing_field["examples"][0]["distance"]
+        bad_point = json.loads(results_file.read_text(encoding="utf-8"))
+        bad_point["experiments"][0]["points"][0] = {"x": 500}
+        for what, content in (("text that is not JSON", "this is not json {"), ("an empty file", ""), ("a JSON list", "[]"),
+                              ("other field names", json.dumps({"hello": 1})), ("a missing 'note'", json.dumps({k: v for k, v in good.items() if k != "note"})),
+                              ("an example without 'distance'", json.dumps(missing_field)), ("a point without 'memorization_rate'", json.dumps(bad_point))):
+            results_file.write_text(content, encoding="utf-8")
+            check_error(get_audit(results_file), 500, f"audit results file with {what}")
+    print("audit: placeholder, results file and 7 kinds of broken file all as expected")
+
+
+# ------------------------------------------------------- 10. POST /audit/check (real)
+
+CHECK_NAMES = {"rank", "distance", "phash_distance", "image_png_base64"}
+BANNED_WORDS = ("copied", "stolen", "plagiarism", "infringement")        # never used as a conclusion
+
+
+def train_picture(index):
+    """CIFAR-10 TRAIN picture number `index` (32 x 32 x 3 numbers), read straight from the data_batch files,
+    not through the API code (so the check does not use what it is checking)."""
+    with open(ROOT / "data" / "cifar10" / "cifar-10-batches-py" / f"data_batch_{index // 10000 + 1}", "rb") as file:
+        return pickle.load(file, encoding="bytes")[b"data"][index % 10000].reshape(3, 32, 32).transpose(1, 2, 0)
+
+
+def send_check(data, **form):
+    """Send picture bytes to POST /audit/check (form: optional run). Returns the reply."""
+    return client.post("/audit/check", files={"image": ("x.png", data, "image/png")}, data=form)
+
+
+def check_good_answer(reply, what):
+    """The checks every good /audit/check answer must pass. Returns the answer."""
+    check(reply.status_code == 200, f"{what}: /audit/check answers 200 (got {reply.status_code}: {reply.text[:200]})")
+    body = reply.json()
+    check(same_names(body, CONTRACT["POST /audit/check"]["response"]), f"{what}: the contract's field names")
+    check(set(body) == {"nearest", "flag", "note"} and all(set(n) == CHECK_NAMES for n in body["nearest"]), f"{what}: exactly the contract's keys")
+    check("X-Stub" not in reply.headers and not body["note"].startswith("stub:"), f"{what}: real answer, no X-Stub header, no 'stub:' note")
+    near = body["nearest"]
+    check([n["rank"] for n in near] == [1, 2, 3], f"{what}: the 3 nearest, ranks 1 to 3")
+    distances = [n["distance"] for n in near]
+    check(distances == sorted(distances) and distances[0] >= 0, f"{what}: distances are 0 or more, smallest first (got {distances})")
+    check(all(isinstance(n["phash_distance"], int) and 0 <= n["phash_distance"] <= 64 for n in near), f"{what}: phash_distance is a whole number 0 to 64")
+    for n in near:
+        picture = decode({"png_base64": n["image_png_base64"]})
+        check(picture.format == "PNG" and picture.size == (32, 32) and not n["image_png_base64"].startswith("data:"),
+              f"{what}: image of rank {n['rank']} is a plain base64 32 x 32 PNG")
+    check(body["flag"] in ("possible_copy", "not_flagged"), f"{what}: flag is possible_copy or not_flagged")
+    check("similar" in body["note"] and "possible copy" in body["note"] and "not legal copying" in body["note"], f"{what}: the note's plain words")
+    check(not any(word in body["note"].lower() for word in BANNED_WORDS), f"{what}: the note never says copied / stolen / plagiarism / infringement")
+    return body
+
+
+def check_audit_check():
+    threshold, unique = audit.run_settings("a-500")         # the threshold in results/audit_a-500.json
+    first = train_picture(int(subset_rows("a-500")[0]))     # a picture that WAS in the training set of a-500
+
+    # (a) a training image goes back in: distance 0, possible_copy, itself as rank 1
+    start = time.time()
+    reply = send_check(image_png(first))
+    seconds = time.time() - start
+    body = check_good_answer(reply, "a-500 training image")
+    near = body["nearest"]
+    check(near[0]["distance"] == 0 and near[0]["phash_distance"] == 0 and body["flag"] == "possible_copy",
+          f"a-500 training image: distance 0, flag possible_copy (got {near[0]['distance']}, {body['flag']})")
+    check((np.array(decode({"png_base64": near[0]["image_png_base64"]})) == first).all(), "a-500 training image: rank 1 is the same picture")
+    check(near[1]["distance"] > 0 and "a-500" in body["note"] and f"{unique} different training images" in body["note"] and f"{threshold:.2f}" in body["note"],
+          "a-500 training image: the note names the run, the number of training images and the threshold")
+    check("resized" not in body["note"], "a-500 training image: a 32x32 upload is not resized")
+    check(send_check(image_png(first), run="a-500").json() == body, "run a-500 is the default, and the same picture twice gives the same answer")
+    train = audit.training_images("a-500")
+    check(len(train) == unique == 500, f"a-500: {len(train)} training images rebuilt, the results file says {unique}")
+    exact, _ = nearest_distances(to_float(first[None]), train)
+    check(abs(float(exact[0]) - near[0]["distance"]) < 1e-4, "rank 1 has the distance model/auditor.py's nearest_distances gives")
+    print(f"audit check a-500 training image: distances {[n['distance'] for n in near]}, phash {[n['phash_distance'] for n in near]}, "
+          f"flag {body['flag']}, threshold {threshold}, {len(train)} training images, {seconds:.2f} s")
+
+    # (b) a real picture the model never saw (CIFAR-10 calibration image): never at distance 0
+    (held_out, _), where = cifar_test_pictures()
+    body = check_good_answer(send_check(image_png(held_out)), "calibration image")
+    check(body["nearest"][0]["distance"] > 0, f"{where}: not a training image, so the distance is above 0")
+    check(body["flag"] == ("possible_copy" if body["nearest"][0]["distance"] < threshold else "not_flagged"), f"{where}: the flag follows the threshold")
+    print(f"audit check {where}: nearest distance {body['nearest'][0]['distance']}, flag {body['flag']}")
+
+    # (c) random noise is far from every training image
+    noise = np.random.default_rng(2).integers(0, 256, (32, 32, 3))
+    body = check_good_answer(send_check(image_png(noise)), "random noise")
+    check(body["flag"] == "not_flagged" and body["nearest"][0]["distance"] >= threshold, "random noise: not_flagged")
+
+    # (d) other sizes are resized to 32x32, and the note says so
+    body = check_good_answer(send_check(image_png(np.array(Image.fromarray(first).resize((64, 64), Image.Resampling.NEAREST)))), "64x64 picture")
+    check("Your image was 64x64, so it was resized to 32x32 first." in body["note"], "64x64 picture: the note says it was resized")
+    buffer = io.BytesIO()
+    Image.new("RGB", (30, 20), (200, 50, 50)).save(buffer, format="JPEG")
+    body = check_good_answer(send_check(buffer.getvalue()), "30x20 JPG")
+    check("Your image was 30x20, so it was resized to 32x32 first." in body["note"], "30x20 JPG: the note says it was resized")
+
+    # (e) the form field `run`, and a missing image
+    for run in ("a-999", "A-500", "a-500 ", "../results"):
+        check_error(send_check(image_png(first), run=run), 400, f"/audit/check run {run!r}")
+    check_error(client.post("/audit/check", data={"run": "a-500"}), 400, "/audit/check no image field")
+
+    # (f) bad uploads (the wrong type, empty, 5 MB and no-file cases are already checked in check_bad_uploads)
+    good = image_png(solid((1, 2, 3), 8, 8))
+    check_error(send_check(PNG_START + b"this is not a real picture"), 400, "/audit/check PNG start but broken picture")
+    check_error(send_check(good[:20]), 400, "/audit/check cut-off PNG")
+    buffer = io.BytesIO()
+    Image.new("L", (7000, 7000)).save(buffer, format="PNG")                  # 49 million pixels, but a small file
+    check_error(send_check(buffer.getvalue()), 400, "/audit/check more than 40 million pixels")
+
+    # (g) a run without a results file is not ready (503), a broken one is 500. A temporary folder stands in for results/.
+    real_dir = audit.RESULTS_DIR
+    with tempfile.TemporaryDirectory() as folder:
+        audit.RESULTS_DIR = Path(folder)
+        try:
+            for run in RUNS:
+                check_error(send_check(good, run=run), 503, f"/audit/check run {run} without a results file")
+            (Path(folder) / "audit_a-500.json").write_text("this is not json {")
+            check_error(send_check(good), 500, "/audit/check a-500 results file that is not JSON")
+            (Path(folder) / "audit_a-500.json").write_text(json.dumps({"calibration_threshold": 11.8, "unique_images": 499}))
+            check_error(send_check(good), 500, "/audit/check results file with another number of training images")
+        finally:
+            audit.RESULTS_DIR = real_dir
+    check(send_check(good).status_code == 200, "/audit/check works again with the real results folder")
+
+    # (h) the other runs, as soon as their results files exist: the rebuilt training set has the size the file says, and a
+    # training image gives distance 0 (a-500-dup has 500 training rows but only 425 different images)
+    for run in RUNS:
+        if run == "a-500":
+            continue
+        if not (audit.RESULTS_DIR / f"audit_{run}.json").exists():
+            print(f"audit check {run}: no results file yet, its checks are skipped")
+            continue
+        count = audit.run_settings(run)[1]
+        check(len(audit.training_images(run)) == count == len(set(subset_rows(run).tolist())), f"{run}: rebuilt training images equal the results file's {count}")
+        start = time.time()
+        body = check_good_answer(send_check(image_png(train_picture(int(subset_rows(run)[0]))), run=run), f"{run} training image")
+        check(body["nearest"][0]["distance"] == 0 and body["flag"] == "possible_copy", f"{run}: a training image gives distance 0 and possible_copy")
+        print(f"audit check {run}: {count} training images, training image distance 0, {time.time() - start:.2f} s")
+    print("audit check: training image, held-out image, noise, resizing, run field, bad uploads and not-ready runs all as expected")
+
+
 # ------------------------------------------------------------------- 4. CORS
 
 def check_cors():
@@ -573,7 +905,10 @@ if __name__ == "__main__":
     check_not_ready()
     check_detect()
     check_detect_not_ready()
+    check_detect_final()
     check_gradcam()
     check_evidence()
+    check_audit()
+    check_audit_check()
     check_cors()
     print(f"\nALL {count} CHECKS PASSED")

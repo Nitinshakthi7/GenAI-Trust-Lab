@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    { "source": "/generator", "destination": "/index.html" },
+    { "source": "/detector", "destination": "/index.html" },
+    { "source": "/compare", "destination": "/index.html" },
+    { "source": "/auditor", "destination": "/index.html" },
+    { "source": "/limits", "destination": "/index.html" }
+  ]
+}

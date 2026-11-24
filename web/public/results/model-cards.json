@@ -1,0 +1,200 @@
+{
+  "models": {
+    "g-vae-cifar": {
+      "script": "model/train_vae.py",
+      "config": "configs/g-vae-cifar.json",
+      "measurements": {
+        "Epochs run": 10,
+        "Seconds per epoch": 3.71,
+        "Final training loss": 200.32,
+        "Parameters": 1120451,
+        "Weights file size (MB)": 4.5
+      },
+      "source": "results/train_g-vae-cifar.json"
+    },
+    "g-vae-fmnist": {
+      "script": "model/train_vae.py",
+      "config": "configs/g-vae-fmnist.json",
+      "measurements": {
+        "Epochs run": 10,
+        "Seconds per epoch": 5.0,
+        "Final training loss": 66.91,
+        "Parameters": 1118401,
+        "Weights file size (MB)": 4.49
+      },
+      "source": "results/train_g-vae-fmnist.json"
+    },
+    "g-cddpm-fmnist": {
+      "script": "model/train_ddpm.py",
+      "config": "configs/g-cddpm-fmnist.json",
+      "measurements": {
+        "Epochs run": 22,
+        "Seconds per epoch": 92.55,
+        "Total training minutes": 34.02,
+        "Final training loss": 0.0514,
+        "Parameters": 2985985,
+        "Weights file size (MB)": 11.98
+      },
+      "source": "results/train_g-cddpm-fmnist.json"
+    },
+    "g-ddpm-cifar": {
+      "script": "model/train_ddpm.py",
+      "config": "configs/g-ddpm-cifar.json",
+      "measurements": {
+        "Epochs run": 28,
+        "Seconds per epoch": 72.81,
+        "Total training minutes": 33.99,
+        "Final training loss": 0.061,
+        "Parameters": 2985475,
+        "Weights file size (MB)": 11.98,
+        "DDIM sampling, 50 steps, 16 images, GPU (seconds; untrained network of the same size)": 0.34,
+        "DDIM sampling, 50 steps, 16 images, CPU (seconds; untrained network of the same size)": 4.11
+      },
+      "source": "results/train_g-ddpm-cifar.json, results/ddim_timing.json"
+    },
+    "d-vae-cifar": {
+      "script": "model/train_vae.py, model/run_final_detector.py",
+      "config": "configs/d-vae-cifar.json, configs/detector_final.json",
+      "measurements": {
+        "Epochs run": 10,
+        "Seconds per epoch": 2.28,
+        "Final training loss": 210.61,
+        "Parameters": 1120451,
+        "Weights file size (MB)": 4.5,
+        "VAE-number detector, final test AUROC, g-vae-cifar fakes": 0.9835,
+        "VAE-number detector, final test accuracy at 0.5, g-vae-cifar fakes": 0.8732,
+        "VAE-number detector, final test AUROC, g-ddpm-cifar fakes": 0.63,
+        "VAE-number detector, final test accuracy at 0.5, g-ddpm-cifar fakes": 0.6073,
+        "VAE-number detector, AUROC on unseen g-vae-cifar (trained without it, calibration split)": 0.8696,
+        "VAE-number detector, AUROC drop, seen minus unseen g-vae-cifar (calibration split)": 0.1154,
+        "VAE-number detector, AUROC on unseen g-ddpm-cifar (trained without it, calibration split)": 0.5727,
+        "VAE-number detector, AUROC drop, seen minus unseen g-ddpm-cifar (calibration split)": 0.0474,
+        "VAE-number detector, AUROC after JPEG quality 50, g-vae-cifar fakes (calibration split)": 0.9803,
+        "VAE-number detector, AUROC after JPEG quality 50, g-ddpm-cifar fakes (calibration split)": 0.6338,
+        "VAE-number detector, AUROC after blur sigma 1.0, g-vae-cifar fakes (calibration split)": 0.7848,
+        "VAE-number detector, AUROC after blur sigma 1.0, g-ddpm-cifar fakes (calibration split)": 0.5066,
+        "VAE-number detector, AUROC after noise std 0.05, g-vae-cifar fakes (calibration split)": 0.9833,
+        "VAE-number detector, AUROC after noise std 0.05, g-ddpm-cifar fakes (calibration split)": 0.6524
+      },
+      "source": "results/train_d-vae-cifar.json, results/detector_final_final.json, results/detector_final_train.json"
+    },
+    "d-ddpm-cifar": {
+      "script": "model/train_ddpm.py, model/run_final_detector.py",
+      "config": "configs/d-ddpm-cifar.json, configs/detector_final.json",
+      "measurements": {
+        "Epochs run": 34,
+        "Seconds per epoch": 61.55,
+        "Total training minutes": 34.9,
+        "Final training loss": 0.0616,
+        "Parameters": 2985475,
+        "Weights file size (MB)": 11.98,
+        "VAE+diffusion detector, final test AUROC, g-vae-cifar fakes": 0.9705,
+        "VAE+diffusion detector, final test accuracy at 0.5, g-vae-cifar fakes": 0.8827,
+        "VAE+diffusion detector, final test AUROC, g-ddpm-cifar fakes": 0.7025,
+        "VAE+diffusion detector, final test accuracy at 0.5, g-ddpm-cifar fakes": 0.655,
+        "VAE+diffusion detector, AUROC on unseen g-vae-cifar (trained without it, calibration split)": 0.5956,
+        "VAE+diffusion detector, AUROC drop, seen minus unseen g-vae-cifar (calibration split)": 0.376,
+        "VAE+diffusion detector, AUROC on unseen g-ddpm-cifar (trained without it, calibration split)": 0.5075,
+        "VAE+diffusion detector, AUROC drop, seen minus unseen g-ddpm-cifar (calibration split)": 0.182,
+        "VAE+diffusion detector, AUROC after JPEG quality 50, g-vae-cifar fakes (calibration split)": 0.9673,
+        "VAE+diffusion detector, AUROC after JPEG quality 50, g-ddpm-cifar fakes (calibration split)": 0.7063,
+        "VAE+diffusion detector, AUROC after blur sigma 1.0, g-vae-cifar fakes (calibration split)": 0.7805,
+        "VAE+diffusion detector, AUROC after blur sigma 1.0, g-ddpm-cifar fakes (calibration split)": 0.6472,
+        "VAE+diffusion detector, AUROC after noise std 0.05, g-vae-cifar fakes (calibration split)": 0.9181,
+        "VAE+diffusion detector, AUROC after noise std 0.05, g-ddpm-cifar fakes (calibration split)": 0.7086
+      },
+      "source": "results/train_d-ddpm-cifar.json, results/detector_final_final.json, results/detector_final_train.json"
+    },
+    "cnn-baseline": {
+      "script": "model/run_final_detector.py",
+      "config": "configs/detector_final.json",
+      "measurements": {
+        "CNN epochs run": 10,
+        "CNN baseline, final test AUROC, g-vae-cifar fakes": 0.9999,
+        "CNN baseline, final test accuracy at 0.5, g-vae-cifar fakes": 0.9521,
+        "CNN baseline, final test AUROC, g-ddpm-cifar fakes": 0.946,
+        "CNN baseline, final test accuracy at 0.5, g-ddpm-cifar fakes": 0.8805,
+        "CNN baseline, AUROC on unseen g-vae-cifar (trained without it, calibration split)": 0.7482,
+        "CNN baseline, AUROC drop, seen minus unseen g-vae-cifar (calibration split)": 0.2517,
+        "CNN baseline, AUROC on unseen g-ddpm-cifar (trained without it, calibration split)": 0.7053,
+        "CNN baseline, AUROC drop, seen minus unseen g-ddpm-cifar (calibration split)": 0.24,
+        "CNN baseline, AUROC after JPEG quality 50, g-vae-cifar fakes (calibration split)": 0.9999,
+        "CNN baseline, AUROC after JPEG quality 50, g-ddpm-cifar fakes (calibration split)": 0.9375,
+        "CNN baseline, AUROC after blur sigma 1.0, g-vae-cifar fakes (calibration split)": 0.914,
+        "CNN baseline, AUROC after blur sigma 1.0, g-ddpm-cifar fakes (calibration split)": 0.308,
+        "CNN baseline, AUROC after noise std 0.05, g-vae-cifar fakes (calibration split)": 0.8184,
+        "CNN baseline, AUROC after noise std 0.05, g-ddpm-cifar fakes (calibration split)": 0.9345
+      },
+      "source": "results/detector_final_train.json, results/detector_final_final.json"
+    },
+    "a-500": {
+      "script": "model/train_auditor_run.py",
+      "config": "configs/a-500.json",
+      "measurements": {
+        "Training rows": 500,
+        "Different images in the training rows": 500,
+        "Repeated share of training rows (%)": 0.0,
+        "Training steps": 6000,
+        "Training seconds": 5815.7,
+        "Final training loss": 0.03,
+        "Generated images checked": 1000,
+        "Similarity cut-off (pixel distance, from held-out real images)": 11.822,
+        "Generated images flagged as similar (possible copy)": 26,
+        "Share of generated images flagged (possible copy)": 0.026,
+        "Generated: smallest distance to a training image": 6.65,
+        "Generated: 5th percentile distance": 13.005,
+        "Generated: median distance": 18.985,
+        "Held-out real: smallest distance": 7.818,
+        "Held-out real: 1st percentile distance": 11.822,
+        "Held-out real: median distance": 21.741
+      },
+      "source": "results/audit_a-500.json"
+    },
+    "a-10000": {
+      "script": "model/train_auditor_run.py",
+      "config": "configs/a-10000.json",
+      "measurements": {
+        "Training rows": 10000,
+        "Different images in the training rows": 10000,
+        "Repeated share of training rows (%)": 0.0,
+        "Training steps": 6000,
+        "Training seconds": 850.0,
+        "Final training loss": 0.0635,
+        "Generated images checked": 1000,
+        "Similarity cut-off (pixel distance, from held-out real images)": 9.743,
+        "Generated images flagged as similar (possible copy)": 4,
+        "Share of generated images flagged (possible copy)": 0.004,
+        "Generated: smallest distance to a training image": 8.865,
+        "Generated: 5th percentile distance": 13.264,
+        "Generated: median distance": 20.537,
+        "Held-out real: smallest distance": 6.957,
+        "Held-out real: 1st percentile distance": 9.743,
+        "Held-out real: median distance": 19.598
+      },
+      "source": "results/audit_a-10000.json"
+    },
+    "a-500-dup": {
+      "script": "model/train_auditor_run.py",
+      "config": "configs/a-500-dup.json",
+      "measurements": {
+        "Training rows": 500,
+        "Different images in the training rows": 425,
+        "Repeated share of training rows (%)": 30.0,
+        "Training steps": 6000,
+        "Training seconds": 849.4,
+        "Final training loss": 0.0262,
+        "Generated images checked": 1000,
+        "Similarity cut-off (pixel distance, from held-out real images)": 11.822,
+        "Generated images flagged as similar (possible copy)": 39,
+        "Share of generated images flagged (possible copy)": 0.039,
+        "Generated: smallest distance to a training image": 6.615,
+        "Generated: 5th percentile distance": 12.175,
+        "Generated: median distance": 18.774,
+        "Held-out real: smallest distance": 7.818,
+        "Held-out real: 1st percentile distance": 11.822,
+        "Held-out real: median distance": 21.842
+      },
+      "source": "results/audit_a-500-dup.json"
+    }
+  }
+}

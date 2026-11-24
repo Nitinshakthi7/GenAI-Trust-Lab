@@ -1,0 +1,131 @@
+{
+  "run_id": "detector_final",
+  "stamp": "final test split, scored ONCE with the frozen detectors and thresholds",
+  "dry_run": false,
+  "final_test_used": true,
+  "data_used": "the real final_test images and the fakes' 'test' arrays",
+  "generators": [
+    "g-vae-cifar",
+    "g-ddpm-cifar"
+  ],
+  "images": {
+    "real": 5000,
+    "fake_per_generator": {
+      "g-vae-cifar": 5000,
+      "g-ddpm-cifar": 5000
+    }
+  },
+  "frozen_thresholds": {
+    "lr_vae": {
+      "low": 0.14725735783576965,
+      "high": 0.6753630638122559
+    },
+    "lr_vae_ddpm": {
+      "low": 0.1437310427427292,
+      "high": 0.7324833869934082
+    },
+    "cnn": {
+      "low": 0.34905824065208435,
+      "high": 0.7524200081825256
+    }
+  },
+  "weights_sha256_checked": {
+    "detector_final_lr_vae.joblib": "d319880e987771fdcf4e70b27d5a6bf1186f6498c6424602a3867ed38596f12c",
+    "detector_final_lr_vae_ddpm.joblib": "1f90ae5b6019734162d6789708eb3bee86b34ecaeb8e623d2751b13b8f4beca7",
+    "detector_final_cnn.pt": "7742e88aad05e6811f926ffe2a12af477421fe32b9516892735e4123026deed5"
+  },
+  "detectors": {
+    "lr_vae": {
+      "low_threshold": 0.14725735783576965,
+      "high_threshold": 0.6753630638122559,
+      "real_images_labels": {
+        "real": 0.1152,
+        "ai": 0.0502,
+        "unclear": 0.8346
+      },
+      "per_generator": {
+        "g-vae-cifar": {
+          "auroc": 0.9835,
+          "accuracy_at_0.5": 0.8732,
+          "fake_images_labels": {
+            "real": 0.0,
+            "ai": 0.9746,
+            "unclear": 0.0254
+          }
+        },
+        "g-ddpm-cifar": {
+          "auroc": 0.63,
+          "accuracy_at_0.5": 0.6073,
+          "fake_images_labels": {
+            "real": 0.1026,
+            "ai": 0.1472,
+            "unclear": 0.7502
+          }
+        }
+      }
+    },
+    "lr_vae_ddpm": {
+      "low_threshold": 0.1437310427427292,
+      "high_threshold": 0.7324833869934082,
+      "real_images_labels": {
+        "real": 0.2078,
+        "ai": 0.0508,
+        "unclear": 0.7414
+      },
+      "per_generator": {
+        "g-vae-cifar": {
+          "auroc": 0.9705,
+          "accuracy_at_0.5": 0.8827,
+          "fake_images_labels": {
+            "real": 0.0,
+            "ai": 0.8586,
+            "unclear": 0.1414
+          }
+        },
+        "g-ddpm-cifar": {
+          "auroc": 0.7025,
+          "accuracy_at_0.5": 0.655,
+          "fake_images_labels": {
+            "real": 0.0982,
+            "ai": 0.251,
+            "unclear": 0.6508
+          }
+        }
+      }
+    },
+    "cnn": {
+      "low_threshold": 0.34905824065208435,
+      "high_threshold": 0.7524200081825256,
+      "real_images_labels": {
+        "real": 0.8584,
+        "ai": 0.0482,
+        "unclear": 0.0934
+      },
+      "per_generator": {
+        "g-vae-cifar": {
+          "auroc": 0.9999,
+          "accuracy_at_0.5": 0.9521,
+          "fake_images_labels": {
+            "real": 0.0,
+            "ai": 1.0,
+            "unclear": 0.0
+          }
+        },
+        "g-ddpm-cifar": {
+          "auroc": 0.946,
+          "accuracy_at_0.5": 0.8805,
+          "fake_images_labels": {
+            "real": 0.1084,
+            "ai": 0.773,
+            "unclear": 0.1186
+          }
+        }
+      }
+    }
+  },
+  "caveats": [
+    "the Detector's diffusion model and the fake-making diffusion model share an architecture; detection of that generator may look better than on a truly unseen generator",
+    "VAE fakes are blurry and easy.",
+    "unseen generator results are findings, not promises"
+  ]
+}

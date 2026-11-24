@@ -1,0 +1,67 @@
+{
+  "similarity": {
+    "ssim": 0.48,
+    "lpips": null
+  },
+  "diff_heatmap_png_base64": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAA8klEQVR4nO1VsQ2DMBA0r1SMkAXSoa8Rk2QE6sziEZiDAqV+MQxSGpTCkWXsx/5YuEm46mWf787/MlS3a6tKAoqqq9NAgHMG/9wi6tErjjQwotSjLbJDVOG3iGWjpiQt5DA3SIaN0NjFjUG83SRoSLgFe3uoib1yCI/m6XxmEKrvHfBgmS7NPQ5x9Thc5l4mSKpjlp+VBYkWcutJY+MBGUmVLAp09Ty0YJaS6ujQ4mTUBF0NXa2UWqeFecks5qFt7k8JzRTrtJgiZmDZX8HmoB5R08YgVGwEqe1Zlly9xkeeohCXEqIupEPOxg//k49CcYM3fChx4funIKYAAAAASUVORK5CYII=",
+  "regions_png_base64": null,
+  "feature_table": [
+    {
+      "feature": "mean colour",
+      "image_a": "muted blue",
+      "image_b": "muted green",
+      "does_not_prove": "Descriptive only. It includes the background."
+    },
+    {
+      "feature": "colour histogram distance",
+      "image_a": "0.35",
+      "image_b": "0.35",
+      "does_not_prove": "A distribution distance does not locate a colour change."
+    },
+    {
+      "feature": "mean brightness",
+      "image_a": "0.40",
+      "image_b": "0.60",
+      "does_not_prove": "Descriptive only. Lighting influences this value."
+    },
+    {
+      "feature": "edge density",
+      "image_a": "0.19",
+      "image_b": "0.14",
+      "does_not_prove": "Shows the amount of edges, not which parts changed."
+    },
+    {
+      "feature": "texture",
+      "image_a": "0.31",
+      "image_b": "0.23",
+      "does_not_prove": "A texture summary does not identify the material."
+    },
+    {
+      "feature": "image size",
+      "image_a": "32x32",
+      "image_b": "32x32",
+      "does_not_prove": "Matching dimensions do not mean the photographs are aligned."
+    },
+    {
+      "feature": "dominant colours",
+      "image_a": "blue 55%, brown 30%, grey 15%",
+      "image_b": "green 60%, blue 25%, grey 15%",
+      "does_not_prove": "Descriptive only. Background colours count too."
+    }
+  ],
+  "differences": [
+    {
+      "part": "sky colour",
+      "image_a": "muted blue",
+      "image_b": "green-grey"
+    },
+    {
+      "part": "lighting",
+      "image_a": "unsure",
+      "image_b": "unsure"
+    }
+  ],
+  "source": "vlm",
+  "summary": "Illustrative Words response for two demo landscapes.",
+  "note": "stub: pixel values and Words are fixed illustrations. Nothing was calculated from or sent with your photos."
+}
