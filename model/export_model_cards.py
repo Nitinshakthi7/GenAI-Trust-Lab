@@ -12,6 +12,8 @@
 #   ddim_timing.json              how long DDIM sampling takes (for g-ddpm-cifar)
 #   detector_final_final.json     final test split, scored once (the detectors)
 #   detector_final_train.json     calibration split: unseen-generator test and robustness (the detectors)
+#   detector_intervals.json       95% intervals; the final-test ones are formula-based (the detectors)
+#   detector_blur_control.json    sharpness-only baseline and AUROC on blur-matched real images (calibration split)
 #   audit_<card id>.json          one Auditor run (a-500, a-10000, a-500-dup)
 # File it WRITES:
 #   web/public/results/model-cards.json
@@ -85,12 +87,18 @@ def new_card(script, config):
     return {"script": script, "config": config, "measurements": {}, "_files": []}
 
 
-def put(card, label, filename, *path):
-    """Copy the number at `path` inside results/<filename> into the card. Skip it if it is not there."""
+def value_at(filename, *path):
+    """The number at `path` inside results/<filename>, or None if it is not there."""
     value = load(filename)
     for key in path:
         value = value.get(key) if isinstance(value, dict) else None
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
+    return None if isinstance(value, bool) or not isinstance(value, (int, float)) else value
+
+
+def put(card, label, filename, *path):
+    """Copy the number at `path` inside results/<filename> into the card. Skip it if it is not there."""
+    value = value_at(filename, *path)
+    if value is None:
         return
     card["measurements"][label] = value
     if filename not in card["_files"]:
@@ -114,6 +122,16 @@ def put_detector(card, detector, name):
     for key, text in PERTURBATIONS:
         for g in GENERATORS:
             put(card, f"{name}, AUROC after {text}, {g} fakes (calibration split)", train, "robustness", key, detector, g, "auroc")
+    intervals, blur = "detector_intervals.json", "detector_blur_control.json"
+    for g in GENERATORS:
+        for end in ("low", "high"):
+            put(card, f"{name}, final test AUROC 95% interval, {end} end (formula-based interval), {g} fakes", intervals,
+                "final_test_closed_form_only", "detectors", detector, g, "auroc", f"hanley_mcneil_{end}")
+    for g in GENERATORS:  # real images blurred to the sharpness of g's fakes (sigma*), then scored against g's fakes
+        sigma = value_at(blur, "blur_matched", "sigma_star", g)
+        if sigma is not None:
+            put(card, f"{name}, AUROC on blur-matched real images (blur sigma {sigma}) vs {g} fakes (calibration split)",
+                blur, "blur_matched", "auroc_at_sigma_star", detector, g)
 
 
 def build_cards():
@@ -136,6 +154,16 @@ def build_cards():
     put(cards["cnn-baseline"], "CNN epochs run", "detector_final_train.json", "cnn_epochs_run")
     for run_id, (detector, name) in DETECTORS.items():
         put_detector(cards[run_id], detector, name)
+
+    # shortcut check: how well does sharpness alone separate real from fake? (calibration split)
+    blur = "detector_blur_control.json"
+    sharp = cards["sharpness-baseline"] = new_card("model/blur_control.py", "no config file: the settings are at the top of model/blur_control.py")
+    for g in GENERATORS:
+        put(sharp, f"AUROC of minus sharpness, real images vs {g} fakes (calibration split)", blur, "sharpness_only", "auroc_real_vs_fakes", g)
+    for key, text in [("real_calibration", "real images"), ("g-vae-cifar_fakes", "g-vae-cifar fakes"), ("g-ddpm-cifar_fakes", "g-ddpm-cifar fakes")]:
+        put(sharp, f"Median sharpness, {text} (calibration split)", blur, "sharpness_only", "median_sharpness", key)
+    for g in GENERATORS:
+        put(sharp, f"Blur sigma matched to the sharpness of {g} fakes (sigma*; 0 = fakes not blurrier than real)", blur, "blur_matched", "sigma_star", g)
 
     for run_id in ["a-500", "a-10000", "a-500-dup"]:
         cards[run_id] = new_card("model/train_auditor_run.py", f"configs/{run_id}.json")

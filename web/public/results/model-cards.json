@@ -74,9 +74,15 @@
         "VAE-number detector, AUROC after blur sigma 1.0, g-vae-cifar fakes (calibration split)": 0.7848,
         "VAE-number detector, AUROC after blur sigma 1.0, g-ddpm-cifar fakes (calibration split)": 0.5066,
         "VAE-number detector, AUROC after noise std 0.05, g-vae-cifar fakes (calibration split)": 0.9833,
-        "VAE-number detector, AUROC after noise std 0.05, g-ddpm-cifar fakes (calibration split)": 0.6524
+        "VAE-number detector, AUROC after noise std 0.05, g-ddpm-cifar fakes (calibration split)": 0.6524,
+        "VAE-number detector, final test AUROC 95% interval, low end (formula-based interval), g-vae-cifar fakes": 0.981,
+        "VAE-number detector, final test AUROC 95% interval, high end (formula-based interval), g-vae-cifar fakes": 0.986,
+        "VAE-number detector, final test AUROC 95% interval, low end (formula-based interval), g-ddpm-cifar fakes": 0.6192,
+        "VAE-number detector, final test AUROC 95% interval, high end (formula-based interval), g-ddpm-cifar fakes": 0.6408,
+        "VAE-number detector, AUROC on blur-matched real images (blur sigma 1.0) vs g-vae-cifar fakes (calibration split)": 0.8351,
+        "VAE-number detector, AUROC on blur-matched real images (blur sigma 0.5) vs g-ddpm-cifar fakes (calibration split)": 0.4528
       },
-      "source": "results/train_d-vae-cifar.json, results/detector_final_final.json, results/detector_final_train.json"
+      "source": "results/train_d-vae-cifar.json, results/detector_final_final.json, results/detector_final_train.json, results/detector_intervals.json, results/detector_blur_control.json"
     },
     "d-ddpm-cifar": {
       "script": "model/train_ddpm.py, model/run_final_detector.py",
@@ -101,9 +107,15 @@
         "VAE+diffusion detector, AUROC after blur sigma 1.0, g-vae-cifar fakes (calibration split)": 0.7805,
         "VAE+diffusion detector, AUROC after blur sigma 1.0, g-ddpm-cifar fakes (calibration split)": 0.6472,
         "VAE+diffusion detector, AUROC after noise std 0.05, g-vae-cifar fakes (calibration split)": 0.9181,
-        "VAE+diffusion detector, AUROC after noise std 0.05, g-ddpm-cifar fakes (calibration split)": 0.7086
+        "VAE+diffusion detector, AUROC after noise std 0.05, g-ddpm-cifar fakes (calibration split)": 0.7086,
+        "VAE+diffusion detector, final test AUROC 95% interval, low end (formula-based interval), g-vae-cifar fakes": 0.9671,
+        "VAE+diffusion detector, final test AUROC 95% interval, high end (formula-based interval), g-vae-cifar fakes": 0.9739,
+        "VAE+diffusion detector, final test AUROC 95% interval, low end (formula-based interval), g-ddpm-cifar fakes": 0.6923,
+        "VAE+diffusion detector, final test AUROC 95% interval, high end (formula-based interval), g-ddpm-cifar fakes": 0.7127,
+        "VAE+diffusion detector, AUROC on blur-matched real images (blur sigma 1.0) vs g-vae-cifar fakes (calibration split)": 0.697,
+        "VAE+diffusion detector, AUROC on blur-matched real images (blur sigma 0.5) vs g-ddpm-cifar fakes (calibration split)": 0.5357
       },
-      "source": "results/train_d-ddpm-cifar.json, results/detector_final_final.json, results/detector_final_train.json"
+      "source": "results/train_d-ddpm-cifar.json, results/detector_final_final.json, results/detector_final_train.json, results/detector_intervals.json, results/detector_blur_control.json"
     },
     "cnn-baseline": {
       "script": "model/run_final_detector.py",
@@ -123,9 +135,29 @@
         "CNN baseline, AUROC after blur sigma 1.0, g-vae-cifar fakes (calibration split)": 0.914,
         "CNN baseline, AUROC after blur sigma 1.0, g-ddpm-cifar fakes (calibration split)": 0.308,
         "CNN baseline, AUROC after noise std 0.05, g-vae-cifar fakes (calibration split)": 0.8184,
-        "CNN baseline, AUROC after noise std 0.05, g-ddpm-cifar fakes (calibration split)": 0.9345
+        "CNN baseline, AUROC after noise std 0.05, g-ddpm-cifar fakes (calibration split)": 0.9345,
+        "CNN baseline, final test AUROC 95% interval, low end (formula-based interval), g-vae-cifar fakes": 0.9997,
+        "CNN baseline, final test AUROC 95% interval, high end (formula-based interval), g-vae-cifar fakes": 1.0,
+        "CNN baseline, final test AUROC 95% interval, low end (formula-based interval), g-ddpm-cifar fakes": 0.9414,
+        "CNN baseline, final test AUROC 95% interval, high end (formula-based interval), g-ddpm-cifar fakes": 0.9506,
+        "CNN baseline, AUROC on blur-matched real images (blur sigma 1.0) vs g-vae-cifar fakes (calibration split)": 0.9065,
+        "CNN baseline, AUROC on blur-matched real images (blur sigma 0.5) vs g-ddpm-cifar fakes (calibration split)": 0.8921
       },
-      "source": "results/detector_final_train.json, results/detector_final_final.json"
+      "source": "results/detector_final_train.json, results/detector_final_final.json, results/detector_intervals.json, results/detector_blur_control.json"
+    },
+    "sharpness-baseline": {
+      "script": "model/blur_control.py",
+      "config": "no config file: the settings are at the top of model/blur_control.py",
+      "measurements": {
+        "AUROC of minus sharpness, real images vs g-vae-cifar fakes (calibration split)": 0.9985,
+        "AUROC of minus sharpness, real images vs g-ddpm-cifar fakes (calibration split)": 0.7018,
+        "Median sharpness, real images (calibration split)": 0.030342,
+        "Median sharpness, g-vae-cifar fakes (calibration split)": 0.00231974,
+        "Median sharpness, g-ddpm-cifar fakes (calibration split)": 0.0176255,
+        "Blur sigma matched to the sharpness of g-vae-cifar fakes (sigma*; 0 = fakes not blurrier than real)": 1.0,
+        "Blur sigma matched to the sharpness of g-ddpm-cifar fakes (sigma*; 0 = fakes not blurrier than real)": 0.5
+      },
+      "source": "results/detector_blur_control.json"
     },
     "a-500": {
       "script": "model/train_auditor_run.py",

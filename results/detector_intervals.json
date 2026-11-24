@@ -1,0 +1,247 @@
+{
+  "run_id": "detector_final",
+  "quick_smoke_test": false,
+  "command": "python -m model.blur_control",
+  "seed": 42,
+  "device": "cuda",
+  "seconds": {
+    "scoring_or_loading": 287.6,
+    "total": 297.6
+  },
+  "scores_reused_from_cache": false,
+  "images_calibration": {
+    "real": 5000,
+    "fake_per_generator": {
+      "g-vae-cifar": 5000,
+      "g-ddpm-cifar": 5000
+    }
+  },
+  "frozen_hash_check_all_match": true,
+  "calibration_bootstrap_and_closed_form": {
+    "note": "calibration split, scored with the frozen detectors (see scores_reused_from_cache); accuracy_at_0.5 counts a score of 0.5 or more as 'ai' (as in run_final_detector.py); bootstrap = percentile interval, 2000 resamples, real and fake images resampled separately; closed form = Hanley-McNeil (AUROC, fakes are the positives) and Wilson (accuracy over all real and fake images)",
+    "confidence": 0.95,
+    "bootstrap_resamples": 2000,
+    "bootstrap_seed": 42,
+    "detectors": {
+      "lr_vae": {
+        "g-vae-cifar": {
+          "auroc": {
+            "value": 0.985,
+            "bootstrap_low": 0.9823,
+            "bootstrap_high": 0.9874,
+            "hanley_mcneil_se": 0.00123,
+            "hanley_mcneil_low": 0.9825,
+            "hanley_mcneil_high": 0.9874
+          },
+          "accuracy_at_0.5": {
+            "value": 0.868,
+            "bootstrap_low": 0.8616,
+            "bootstrap_high": 0.8741,
+            "wilson_low": 0.8612,
+            "wilson_high": 0.8745
+          }
+        },
+        "g-ddpm-cifar": {
+          "auroc": {
+            "value": 0.6201,
+            "bootstrap_low": 0.6087,
+            "bootstrap_high": 0.6312,
+            "hanley_mcneil_se": 0.00557,
+            "hanley_mcneil_low": 0.6092,
+            "hanley_mcneil_high": 0.631
+          },
+          "accuracy_at_0.5": {
+            "value": 0.6037,
+            "bootstrap_low": 0.5943,
+            "bootstrap_high": 0.6131,
+            "wilson_low": 0.5941,
+            "wilson_high": 0.6132
+          }
+        }
+      },
+      "lr_vae_ddpm": {
+        "g-vae-cifar": {
+          "auroc": {
+            "value": 0.9716,
+            "bootstrap_low": 0.9683,
+            "bootstrap_high": 0.975,
+            "hanley_mcneil_se": 0.00169,
+            "hanley_mcneil_low": 0.9683,
+            "hanley_mcneil_high": 0.975
+          },
+          "accuracy_at_0.5": {
+            "value": 0.8794,
+            "bootstrap_low": 0.8734,
+            "bootstrap_high": 0.8852,
+            "wilson_low": 0.8729,
+            "wilson_high": 0.8856
+          }
+        },
+        "g-ddpm-cifar": {
+          "auroc": {
+            "value": 0.6895,
+            "bootstrap_low": 0.679,
+            "bootstrap_high": 0.6999,
+            "hanley_mcneil_se": 0.00526,
+            "hanley_mcneil_low": 0.6792,
+            "hanley_mcneil_high": 0.6998
+          },
+          "accuracy_at_0.5": {
+            "value": 0.6454,
+            "bootstrap_low": 0.6366,
+            "bootstrap_high": 0.6543,
+            "wilson_low": 0.636,
+            "wilson_high": 0.6547
+          }
+        }
+      },
+      "cnn": {
+        "g-vae-cifar": {
+          "auroc": {
+            "value": 0.9999,
+            "bootstrap_low": 0.9999,
+            "bootstrap_high": 1.0,
+            "hanley_mcneil_se": 8e-05,
+            "hanley_mcneil_low": 0.9998,
+            "hanley_mcneil_high": 1.0
+          },
+          "accuracy_at_0.5": {
+            "value": 0.952,
+            "bootstrap_low": 0.948,
+            "bootstrap_high": 0.956,
+            "wilson_low": 0.9476,
+            "wilson_high": 0.956
+          }
+        },
+        "g-ddpm-cifar": {
+          "auroc": {
+            "value": 0.9453,
+            "bootstrap_low": 0.941,
+            "bootstrap_high": 0.9494,
+            "hanley_mcneil_se": 0.00236,
+            "hanley_mcneil_low": 0.9407,
+            "hanley_mcneil_high": 0.95
+          },
+          "accuracy_at_0.5": {
+            "value": 0.8846,
+            "bootstrap_low": 0.8782,
+            "bootstrap_high": 0.8912,
+            "wilson_low": 0.8782,
+            "wilson_high": 0.8907
+          }
+        }
+      }
+    },
+    "max_abs_difference_bootstrap_vs_closed_form": {
+      "auroc_low": 0.0005,
+      "auroc_high": 0.0006,
+      "accuracy_low": 0.0006,
+      "accuracy_high": 0.0005,
+      "overall": 0.0006
+    }
+  },
+  "final_test_closed_form_only": {
+    "note": "FORMULA-BASED intervals (Hanley-McNeil for AUROC, Wilson for accuracy), NOT bootstrap: the final test was scored once and the per-image scores were not saved. Nothing was re-scored here.",
+    "confidence": 0.95,
+    "values_from": "results/detector_final_final.json (AUROC and accuracy are rounded to 4 decimals there)",
+    "set_sizes_from": "results/detector_final_final.json: images.real and images.fake_per_generator",
+    "detectors": {
+      "lr_vae": {
+        "g-vae-cifar": {
+          "auroc": {
+            "value": 0.9835,
+            "hanley_mcneil_se": 0.00129,
+            "hanley_mcneil_low": 0.981,
+            "hanley_mcneil_high": 0.986
+          },
+          "accuracy_at_0.5": {
+            "value": 0.8732,
+            "wilson_low": 0.8665,
+            "wilson_high": 0.8796
+          },
+          "n_real": 5000,
+          "n_fake": 5000
+        },
+        "g-ddpm-cifar": {
+          "auroc": {
+            "value": 0.63,
+            "hanley_mcneil_se": 0.00553,
+            "hanley_mcneil_low": 0.6192,
+            "hanley_mcneil_high": 0.6408
+          },
+          "accuracy_at_0.5": {
+            "value": 0.6073,
+            "wilson_low": 0.5977,
+            "wilson_high": 0.6168
+          },
+          "n_real": 5000,
+          "n_fake": 5000
+        }
+      },
+      "lr_vae_ddpm": {
+        "g-vae-cifar": {
+          "auroc": {
+            "value": 0.9705,
+            "hanley_mcneil_se": 0.00173,
+            "hanley_mcneil_low": 0.9671,
+            "hanley_mcneil_high": 0.9739
+          },
+          "accuracy_at_0.5": {
+            "value": 0.8827,
+            "wilson_low": 0.8762,
+            "wilson_high": 0.8889
+          },
+          "n_real": 5000,
+          "n_fake": 5000
+        },
+        "g-ddpm-cifar": {
+          "auroc": {
+            "value": 0.7025,
+            "hanley_mcneil_se": 0.00518,
+            "hanley_mcneil_low": 0.6923,
+            "hanley_mcneil_high": 0.7127
+          },
+          "accuracy_at_0.5": {
+            "value": 0.655,
+            "wilson_low": 0.6456,
+            "wilson_high": 0.6643
+          },
+          "n_real": 5000,
+          "n_fake": 5000
+        }
+      },
+      "cnn": {
+        "g-vae-cifar": {
+          "auroc": {
+            "value": 0.9999,
+            "hanley_mcneil_se": 0.0001,
+            "hanley_mcneil_low": 0.9997,
+            "hanley_mcneil_high": 1.0
+          },
+          "accuracy_at_0.5": {
+            "value": 0.9521,
+            "wilson_low": 0.9477,
+            "wilson_high": 0.9561
+          },
+          "n_real": 5000,
+          "n_fake": 5000
+        },
+        "g-ddpm-cifar": {
+          "auroc": {
+            "value": 0.946,
+            "hanley_mcneil_se": 0.00234,
+            "hanley_mcneil_low": 0.9414,
+            "hanley_mcneil_high": 0.9506
+          },
+          "accuracy_at_0.5": {
+            "value": 0.8805,
+            "wilson_low": 0.874,
+            "wilson_high": 0.8867
+          },
+          "n_real": 5000,
+          "n_fake": 5000
+        }
+      }
+    }
+  }
+}

@@ -31,6 +31,7 @@ const modelCards = [
   ['d-vae-cifar', 'Detector anomaly score and default error map', 'CIFAR-10 · 32×32 colour'],
   ['d-ddpm-cifar', 'Detector reconstruction (diffusion)', 'CIFAR-10 · 32×32 colour'],
   ['cnn-baseline', 'Detector classifier baseline', 'CIFAR-10 · 32×32 colour'],
+  ['sharpness-baseline', 'Detector shortcut check: sharpness only', 'CIFAR-10 · 32×32 colour'],
   ['a-500', 'Auditor diffusion run', 'CIFAR-10'],
   ['a-10000', 'Auditor diffusion run', 'CIFAR-10'],
   ['a-500-dup', 'Auditor diffusion run with duplicates', 'CIFAR-10'],
@@ -110,6 +111,7 @@ export function LimitsPage() {
           <p>{unseenWarning}</p>
           <p>A shared architecture or training data between the detector and a generator may make detection look better than it is.</p>
           <p>The Detector was trained on two kinds of fakes: images from our VAE and images from our own small DDPM (a diffusion model). The diffusion fakes were harder for it to catch than the VAE fakes. The Detector also gets worse on a generator it never saw during training.</p>
+          <p>Blur shortcut check: our VAE fakes are blurry, so the Detector may partly be spotting blur. A one-number sharpness check alone is already a strong detector for the VAE fakes, and on the diffusion fakes it is about as good as the two feature-based detectors; the CNN baseline does clearly better there (see the sharpness-baseline card). When real images were blurred to match the fakes, every detector scored worse, so part of what they detect is blur. A blurred real image is not the same as a generated one, so this shows a shortcut is likely, not exactly how much of the score it explains.</p>
         </article>
         <article className="lab-panel">
           <h2>How to read the results</h2>

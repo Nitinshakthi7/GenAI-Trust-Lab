@@ -1,0 +1,220 @@
+{
+  "run_id": "detector_final",
+  "quick_smoke_test": false,
+  "command": "python -m model.blur_control",
+  "seed": 42,
+  "device": "cuda",
+  "seconds": {
+    "scoring_or_loading": 287.6,
+    "total": 297.6
+  },
+  "scores_reused_from_cache": false,
+  "stamp": "calibration split only (real 'calibration' part and the fakes' 'calibration' arrays); final test not used",
+  "final_test_used": false,
+  "images": {
+    "real_calibration": 5000,
+    "fake_calibration_per_generator": {
+      "g-vae-cifar": 5000,
+      "g-ddpm-cifar": 5000
+    }
+  },
+  "frozen_hash_check": {
+    "config": "configs/detector_final.json",
+    "all_match": true,
+    "files": {
+      "detector_final_lr_vae.joblib": {
+        "expected": "d319880e987771fdcf4e70b27d5a6bf1186f6498c6424602a3867ed38596f12c",
+        "actual": "d319880e987771fdcf4e70b27d5a6bf1186f6498c6424602a3867ed38596f12c",
+        "match": true
+      },
+      "detector_final_lr_vae_ddpm.joblib": {
+        "expected": "1f90ae5b6019734162d6789708eb3bee86b34ecaeb8e623d2751b13b8f4beca7",
+        "actual": "1f90ae5b6019734162d6789708eb3bee86b34ecaeb8e623d2751b13b8f4beca7",
+        "match": true
+      },
+      "detector_final_cnn.pt": {
+        "expected": "7742e88aad05e6811f926ffe2a12af477421fe32b9516892735e4123026deed5",
+        "actual": "7742e88aad05e6811f926ffe2a12af477421fe32b9516892735e4123026deed5",
+        "match": true
+      },
+      "d-vae-cifar.pt": {
+        "expected": "c82b28040cb5a804ebdc8dfe4f3afe73136f3703cf14cb78da4a47865d3243f7",
+        "actual": "c82b28040cb5a804ebdc8dfe4f3afe73136f3703cf14cb78da4a47865d3243f7",
+        "match": true
+      },
+      "d-ddpm-cifar.pt": {
+        "expected": "a3bbf2fe6da81d30f5a861a2c8f3b5ad98040cea38c971fb2f6d69958d9b99b2",
+        "actual": "a3bbf2fe6da81d30f5a861a2c8f3b5ad98040cea38c971fb2f6d69958d9b99b2",
+        "match": true
+      }
+    }
+  },
+  "sharpness_only": {
+    "definition": "variance of the Laplacian (scipy.ndimage.laplace) of the grayscale image, pixels on a 0..1 scale",
+    "score": "AI-ness = minus sharpness; AUROC above 0.5 means the fakes are blurrier than the real images",
+    "median_sharpness": {
+      "real_calibration": 0.030342,
+      "g-vae-cifar_fakes": 0.00231974,
+      "g-ddpm-cifar_fakes": 0.0176255
+    },
+    "auroc_real_vs_fakes": {
+      "g-vae-cifar": 0.9985,
+      "g-ddpm-cifar": 0.7018
+    },
+    "images": {
+      "real_calibration": 5000
+    }
+  },
+  "blur_matched": {
+    "how_blurred": "scipy.ndimage.gaussian_filter on each colour channel separately (sigma 0 across channels), rounded to whole 0..255 pixels; fakes are NOT blurred",
+    "sigmas": [
+      0.0,
+      0.5,
+      0.75,
+      1.0,
+      1.25,
+      1.5
+    ],
+    "median_sharpness_real_by_sigma": {
+      "0.0": 0.030342,
+      "0.5": 0.0149569,
+      "0.75": 0.00557501,
+      "1.0": 0.00263114,
+      "1.25": 0.00136765,
+      "1.5": 0.000778277
+    },
+    "sigma_star_rule": "the grid sigma whose median real sharpness is closest (absolute difference) to the median sharpness of the generator's fakes; 0 if the fakes are not blurrier than the unblurred real images",
+    "sigma_star": {
+      "g-vae-cifar": 1.0,
+      "g-ddpm-cifar": 0.5
+    },
+    "sigma_star_details": {
+      "g-vae-cifar": {
+        "fake_median_sharpness": 0.00231974,
+        "fakes_blurrier_than_unblurred_real": true,
+        "sigma_star": 1.0,
+        "fakes_blurrier_than_most_blurred_real": false
+      },
+      "g-ddpm-cifar": {
+        "fake_median_sharpness": 0.0176255,
+        "fakes_blurrier_than_unblurred_real": true,
+        "sigma_star": 0.5,
+        "fakes_blurrier_than_most_blurred_real": false
+      }
+    },
+    "auroc_by_sigma": {
+      "lr_vae": {
+        "g-vae-cifar": {
+          "0.0": 0.985,
+          "0.5": 0.956,
+          "0.75": 0.8908,
+          "1.0": 0.8351,
+          "1.25": 0.805,
+          "1.5": 0.8038
+        },
+        "g-ddpm-cifar": {
+          "0.0": 0.6201,
+          "0.5": 0.4528,
+          "0.75": 0.2852,
+          "1.0": 0.2094,
+          "1.25": 0.1761,
+          "1.5": 0.1643
+        }
+      },
+      "lr_vae_ddpm": {
+        "g-vae-cifar": {
+          "0.0": 0.9716,
+          "0.5": 0.9275,
+          "0.75": 0.814,
+          "1.0": 0.697,
+          "1.25": 0.583,
+          "1.5": 0.4819
+        },
+        "g-ddpm-cifar": {
+          "0.0": 0.6895,
+          "0.5": 0.5357,
+          "0.75": 0.3576,
+          "1.0": 0.2616,
+          "1.25": 0.201,
+          "1.5": 0.1617
+        }
+      },
+      "cnn": {
+        "g-vae-cifar": {
+          "0.0": 0.9999,
+          "0.5": 0.9996,
+          "0.75": 0.9865,
+          "1.0": 0.9065,
+          "1.25": 0.7968,
+          "1.5": 0.7506
+        },
+        "g-ddpm-cifar": {
+          "0.0": 0.9453,
+          "0.5": 0.8921,
+          "0.75": 0.5189,
+          "1.0": 0.1535,
+          "1.25": 0.0692,
+          "1.5": 0.0543
+        }
+      }
+    },
+    "auroc_at_sigma_star": {
+      "lr_vae": {
+        "g-vae-cifar": 0.8351,
+        "g-ddpm-cifar": 0.4528
+      },
+      "lr_vae_ddpm": {
+        "g-vae-cifar": 0.697,
+        "g-ddpm-cifar": 0.5357
+      },
+      "cnn": {
+        "g-vae-cifar": 0.9065,
+        "g-ddpm-cifar": 0.8921
+      }
+    },
+    "sigma_0_against_detector_final_train_json": {
+      "lr_vae": {
+        "g-vae-cifar": {
+          "this_run": 0.985,
+          "detector_final_train.json": 0.985,
+          "abs_difference": 0.0,
+          "flag_difference_above_0.005": false
+        },
+        "g-ddpm-cifar": {
+          "this_run": 0.6201,
+          "detector_final_train.json": 0.6201,
+          "abs_difference": 0.0,
+          "flag_difference_above_0.005": false
+        }
+      },
+      "lr_vae_ddpm": {
+        "g-vae-cifar": {
+          "this_run": 0.9716,
+          "detector_final_train.json": 0.9716,
+          "abs_difference": 0.0,
+          "flag_difference_above_0.005": false
+        },
+        "g-ddpm-cifar": {
+          "this_run": 0.6895,
+          "detector_final_train.json": 0.6895,
+          "abs_difference": 0.0,
+          "flag_difference_above_0.005": false
+        }
+      },
+      "cnn": {
+        "g-vae-cifar": {
+          "this_run": 0.9999,
+          "detector_final_train.json": 0.9999,
+          "abs_difference": 0.0,
+          "flag_difference_above_0.005": false
+        },
+        "g-ddpm-cifar": {
+          "this_run": 0.9453,
+          "detector_final_train.json": 0.9453,
+          "abs_difference": 0.0,
+          "flag_difference_above_0.005": false
+        }
+      }
+    }
+  }
+}
