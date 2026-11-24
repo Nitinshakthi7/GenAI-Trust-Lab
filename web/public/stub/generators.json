@@ -1,0 +1,66 @@
+{
+  "generators": [
+    {
+      "id": "g-vae-cifar",
+      "name": "Conv VAE",
+      "dataset": "CIFAR-10",
+      "family": "vae",
+      "params": null,
+      "size_mb": null,
+      "status": "ready",
+      "controls": [
+        "seed",
+        "n",
+        "interpolate"
+      ],
+      "classes": [],
+      "licence_note": null
+    },
+    {
+      "id": "g-vae-fmnist",
+      "name": "Conv VAE",
+      "dataset": "Fashion-MNIST",
+      "family": "vae",
+      "params": null,
+      "size_mb": null,
+      "status": "ready",
+      "controls": [
+        "seed",
+        "n",
+        "interpolate"
+      ],
+      "classes": [],
+      "licence_note": null
+    },
+    {
+      "id": "g-cddpm-fmnist",
+      "name": "Class-conditional DDPM",
+      "dataset": "Fashion-MNIST",
+      "family": "ddpm",
+      "params": null,
+      "size_mb": null,
+      "status": "ready",
+      "controls": [
+        "seed",
+        "n",
+        "steps",
+        "class_id",
+        "guidance"
+      ],
+      "classes": [
+        "T-shirt/top",
+        "Trouser",
+        "Pullover",
+        "Dress",
+        "Coat",
+        "Sandal",
+        "Shirt",
+        "Sneaker",
+        "Bag",
+        "Ankle boot"
+      ],
+      "licence_note": null
+    }
+  ],
+  "note": "stub: model catalogue preview. No model runs in demo mode."
+}
