@@ -69,6 +69,12 @@ function DetectorExamples({ image, onSelect, onError, disabled, loading }) {
 
 const measured = (value) => value == null ? placeholder : formatNumber(value);
 
+function strongSplit(check) {
+  const score = (id) => check.models?.find((model) => model.id === id)?.probability_ai;
+  const clip = score('ours-clip'), smaug = score('smaug');
+  return clip != null && smaug != null && (clip >= 0.5) !== (smaug >= 0.5);
+}
+
 function FullCheck({ check, labels }) {
   const features = [...(check.features || [])].sort((a, b) => (b.push == null ? -1 : Math.abs(b.push)) - (a.push == null ? -1 : Math.abs(a.push)));
   const crops = check.crops || [];
@@ -80,13 +86,15 @@ function FullCheck({ check, labels }) {
         <div><dt>Combined score</dt><dd>{check.probability_ai == null ? placeholder : check.probability_ai.toFixed(2)}</dd></div>
       </dl>
       <p>{check.decided_by === 'disagreement'
-        ? 'Unclear because our CLIP model and Smaug disagree: one says AI-made, the other says real. When the two strongest detectors disagree, we do not give a verdict.'
+        ? 'Unclear: our combiner leans towards real, but our CLIP model or Smaug says AI-made. We only answer Real when both strong detectors agree, so we do not give a verdict.'
         : check.decided_by === 'combiner'
-          ? 'Decided by our combiner, a logistic regression that learned how much to trust each detector.' + (check.agree ? ' All detectors agree.' : ' Our measured-feature model disagrees, and it is the weakest detector.')
+          ? 'Decided by our combiner, a logistic regression that learned how much to trust each detector.' + (check.agree ? ' All detectors agree.'
+            : strongSplit(check) ? ' Our CLIP model and Smaug disagree; the combiner trusts Smaug more, because Smaug did better on our training images.'
+              : ' Our measured-feature model disagrees, and it is the weakest detector.')
           : 'Our combiner is not available, so this is the plain average of the scores, cut at 0.5.'}</p>
       {check.band && <p className="field-hint">Score 0 to 1, higher means more AI-like. It is a score, not a calibrated probability. {check.band.low === check.band.high
-        ? `AI-made if at least ${check.band.high.toFixed(2)}, otherwise Real. On the training images real and AI scores did not overlap, so the rule left no Unclear band.`
-        : `AI-made if at least ${check.band.high.toFixed(2)}, Real if at most ${check.band.low.toFixed(2)}, otherwise Unclear.`} The cut-offs were chosen on training images, never on the test images.</p>}
+        ? `AI-made if at least ${check.band.high.toFixed(2)}, otherwise Real.`
+        : `AI-made if at least ${check.band.high.toFixed(2)}, Real if at most ${check.band.low.toFixed(2)}, otherwise Unclear.`} The cut-off was chosen on training images, never on the test images. A Real answer also needs both strong detectors (our CLIP model and Smaug) to say real; if either says AI-made, the answer is Unclear.</p>}
       {check.vote_tested && <p className="field-hint">Tested: {check.vote_tested}.</p>}
       <h4>The three detectors</h4>
       <div className="table-scroll" tabIndex="0" role="region" aria-label="Full-size detectors table">

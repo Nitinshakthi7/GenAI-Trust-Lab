@@ -295,12 +295,13 @@ def band(scores, y):
 
 
 def label_of(score, cut, clip=None, smaug=None):
-    """real / unclear / ai. Added after a live test (an AI doodle that Smaug called real and our CLIP model called AI):
-    if our CLIP model and Smaug land on opposite sides of 0.5, the answer is 'unclear' (the detectors disagree)."""
-    if clip is not None and smaug is not None and not np.isnan(clip) and not np.isnan(smaug) \
-            and (clip >= THRESHOLD) != (smaug >= THRESHOLD):
+    """real / unclear / ai from the combiner's score, with one rule added after two live tests on 25 Nov:
+    the answer may only be 'real' if neither of the two strong detectors (our CLIP model, Smaug) says AI (>= 0.5);
+    otherwise it is 'unclear'. An 'ai' answer from the combiner is kept as it is."""
+    label = "ai" if score >= cut["high"] else "real" if score <= cut["low"] else "unclear"
+    if label == "real" and any(p is not None and not np.isnan(p) and p >= THRESHOLD for p in (clip, smaug)):
         return "unclear"
-    return "ai" if score >= cut["high"] else "real" if score <= cut["low"] else "unclear"
+    return label
 
 
 def auroc(scores, y):
@@ -403,9 +404,11 @@ def main():
         "evaluation": how + " (scored once; Smaug is pretrained, so it is simply scored)",
         "accuracy_at_0_5": acc, "combiner": dict(final, band=cut, weights=weights),
         "combiner_training_out_of_fold": train_check,
-        "unclear_rule": "unclear if our CLIP model and Smaug land on opposite sides of 0.5. Added on 25 Nov after a live "
-                        "test image (an AI doodle) that Smaug called real; the test folder was scored a second time "
-                        "after this change (the first scoring is kept in results/fullsize_pilot_before_unclear_rule.json).",
+        "unclear_rule": "the answer may only be real if neither our CLIP model nor Smaug says AI (>= 0.5); otherwise "
+                        "unclear. Chosen on 25 Nov from two live test images (an AI doodle the combiner called real, and "
+                        "an AI image our CLIP model called real), not from the test folder. The test folder has now been "
+                        "scored three times: no rule (results/fullsize_pilot_before_unclear_rule.json), unclear whenever "
+                        "CLIP and Smaug disagree (results/fullsize_pilot_disagree_rule.json), and this rule (this file).",
         "accuracy_by_generator": by_generator, "feature_medians": medians,
         "smaug_available": bool(not np.isnan(np.asarray(scores["smaug"], dtype=float)).all()),
         "seconds": round(time.time() - start, 1),

@@ -77,9 +77,9 @@ def full_check(data):
         combiner = trained["combiner"]
         final = float(combiner.predict_proba(x)[0, 1])
         counted = dict(zip(inputs, (combiner[-1].coef_[0] * combiner[0].transform(x)[0]).round(3).tolist()))
-        label, decided_by = fullsize.label_of(final, cut, scores["ours-clip"], smaug), "combiner"
-        if (scores["ours-clip"] >= fullsize.THRESHOLD) != (smaug >= fullsize.THRESHOLD):
-            decided_by = "disagreement"                  # our CLIP model and Smaug disagree: the answer is unclear
+        label = fullsize.label_of(final, cut, scores["ours-clip"], smaug)
+        # "disagreement": the combiner leaned real, but our CLIP model or Smaug says AI, so it is not cleared as real
+        decided_by = "disagreement" if label == "unclear" else "combiner"
     else:                                                # fallback: plain average, cut at 0.5
         final = float(np.mean(known)) if known else None
         label = None if final is None else ("ai" if final >= fullsize.THRESHOLD else "real")
