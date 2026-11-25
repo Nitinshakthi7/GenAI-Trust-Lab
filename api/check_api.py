@@ -98,12 +98,16 @@ def picture_bytes(kind="PNG"):
     return buffer.getvalue()
 
 
+OPTIONAL = {"full_check", "full_check_error"}     # /detect adds these only for pictures that are not 32x32
+
+
 def same_names(real, example):
     """True if `real` has exactly the same field names as `example` (values are ignored).
-    The one exception: "fields" (the EXIF tags) is a free list, so only its being a dict is checked."""
+    Exceptions: "fields" (the EXIF tags) is a free list, so only its being a dict is checked;
+    the OPTIONAL fields may be missing, but when they are there their insides are checked too."""
     if isinstance(example, dict):
-        return (isinstance(real, dict) and real.keys() == example.keys()
-                and all(same_names(real[k], example[k]) for k in example if k != "fields"))
+        return (isinstance(real, dict) and real.keys() - OPTIONAL == example.keys() - OPTIONAL
+                and all(same_names(real[k], example[k]) for k in example if k != "fields" and k in real))
     if isinstance(example, list) and example:
         return isinstance(real, list) and all(same_names(item, example[0]) for item in real)
     return True

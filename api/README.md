@@ -52,7 +52,7 @@ image). It does not decide legal copying, and the words "similar" and "possible 
 ## Audit check
 
 `POST /audit/check` finds the training images of one Auditor run that are most similar to your picture. Send a multipart
-form with `image` (PNG or JPG, at most 5 MB, at most 40 million pixels; a bad upload gives 400) and an optional form field
+form with `image` (PNG or JPG, at most 20 MB, at most 40 million pixels; a bad upload gives 400) and an optional form field
 `run`: `a-500` (default), `a-10000` or `a-500-dup`. Any other `run` gives 400 `{"error": ...}`. If the run's
 `results/audit_<run>.json` does not exist yet (the run is still training) the answer is 503 `{"error": ...}`.
 
@@ -74,7 +74,7 @@ form with `image` (PNG or JPG, at most 5 MB, at most 40 million pixels; a bad up
 ## Detect (final detector; the dev detector is still supported)
 
 `POST /detect` says whether a picture looks real or AI-made. Send a multipart form with `image` (PNG or JPG,
-at most 5 MB, at most 40 million pixels; a bad upload gives 400). `configs/detector_active.json` picks the detector.
+at most 20 MB, at most 40 million pixels; a bad upload gives 400). `configs/detector_active.json` picks the detector.
 Right now it is the **final detector** (VAE + diffusion features, a diffusion heatmap and Grad-CAM; the final test split
 was scored once; see "The final detector" below). The older **dev detector** (trained on **one weak generator only**,
 blurry VAE fakes; a work-in-progress check, **not a result**) is used when the file has no `features` key, and is what the
@@ -124,7 +124,7 @@ pointer (no `features` key) the answers are exactly the same as before.
 ## Evidence (EXIF only)
 
 `POST /evidence` shows what the picture FILE says about itself. Send a multipart form with `image` (PNG or JPG,
-at most 5 MB, at most 40 million pixels; a bad upload gives 400). Only **EXIF** is built so far. EXIF is the
+at most 20 MB, at most 40 million pixels; a bad upload gives 400). Only **EXIF** is built so far. EXIF is the
 small block of text a camera or phone writes into a photo. Nothing is stored. The answer has exactly the
 contract's fields:
 
@@ -143,7 +143,7 @@ contract's fields:
 `POST /compare` compares any two photos (for example an orange cat and a black cat) with plain image
 maths and a pretrained CNN. It needs no GPU and nothing trained by us. Send a multipart form with:
 
-- `image_a`, `image_b`: PNG or JPG, at most 5 MB each, at most 40 million pixels.
+- `image_a`, `image_b`: PNG or JPG, at most 20 MB each, at most 40 million pixels.
 - `use_words`: `true` or `false` (default `false`). The Words panel (a vision model that describes the
   differences) is **not built yet**. With `true` the answer is still `"source": "heatmap_only"` and the
   `summary` starts with `Words are not enabled on this server (no vision API configured).`
@@ -234,7 +234,7 @@ Every error has the same shape: `{"error": "<plain text>"}`.
 | 503 | Model not ready: still training, or its weights file is being written. Try again later |
 | 500 | Anything else |
 
-Uploads: PNG or JPG only (the first bytes of the file are checked, not its name), at most 5 MB
+Uploads: PNG or JPG only (the first bytes of the file are checked, not its name), at most 20 MB
 (`MAX_UPLOAD_BYTES` in `api/common.py`).
 
 ## Environment variables

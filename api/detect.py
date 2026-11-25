@@ -14,6 +14,7 @@ import threading
 
 from PIL import Image
 
+from api import fullcheck
 from api.common import ApiError
 from api.compare import MAX_PIXELS          # the same "too many pixels" limit as /compare
 from model.detector import Detector, DetectorNotReady
@@ -67,4 +68,9 @@ def detect(data):
     answer = detector.score_image(picture)
     answer["warning"] = WARNING if answer["out_of_scope"] else None
     answer["note"] = FINAL_NOTE if detector.final else NOTE
+    if answer["out_of_scope"]:                              # a normal-size photo: add the full-size check (api/fullcheck.py)
+        try:
+            answer["full_check"] = fullcheck.full_check(data)
+        except Exception as error:                          # the 32x32 answer above still goes out
+            answer["full_check_error"] = f"the full-size check failed: {type(error).__name__}"
     return answer

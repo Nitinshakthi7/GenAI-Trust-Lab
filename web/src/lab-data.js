@@ -1,6 +1,6 @@
 const base = import.meta.env.BASE_URL;
 const api = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
-const maxBytes = 5 * 1024 * 1024;
+const maxBytes = 20 * 1024 * 1024;
 const fixtures = {
   '/health': 'health',
   '/generators': 'generators',
@@ -81,7 +81,7 @@ export async function labRequest(path, signal, input) {
 }
 
 export async function readImage(file) {
-  if (file.size > maxBytes) throw new Error('The image must be 5 MB or smaller.');
+  if (file.size > maxBytes) throw new Error('The image must be 20 MB or smaller.');
   const magic = new Uint8Array(await file.slice(0, 8).arrayBuffer());
   const png = [137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => magic[index] === byte);
   const jpg = magic[0] === 255 && magic[1] === 216 && magic[2] === 255;

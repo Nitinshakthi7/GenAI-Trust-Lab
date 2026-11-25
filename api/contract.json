@@ -21,7 +21,52 @@
         "input_size": "32x32",
         "out_of_scope": false,
         "warning": null,
-        "note": "Final detector: trained on VAE fakes and diffusion fakes. Example text only, not a result. Grad-CAM shows where the CNN baseline looked; it does not prove why the image is real or AI."
+        "note": "Final detector: trained on VAE fakes and diffusion fakes. Example text only, not a result. Grad-CAM shows where the CNN baseline looked; it does not prove why the image is real or AI.",
+        "full_check": {
+          "label": "ai",
+          "probability_ai": 0.73,
+          "decided_by": "combiner",
+          "band": {
+            "low": 0.5021,
+            "high": 0.5021
+          },
+          "agree": true,
+          "models": [
+            {
+              "id": "ours-clip",
+              "name": "Our CLIP model (frozen CLIP ViT-L/14 features + logistic regression, method of Ojha et al. 2023)",
+              "ours": true,
+              "probability_ai": 0.98,
+              "counted": 1.02,
+              "tested": "395 of 500 correct (test images from AI tools it never saw)"
+            }
+          ],
+          "features": [
+            {
+              "name": "Sharpness",
+              "value": 123.4,
+              "typical_real": 200.1,
+              "typical_ai": 80.2,
+              "push": 0.8,
+              "meaning": "How crisp the edges are."
+            }
+          ],
+          "crops": [
+            {
+              "part": "left",
+              "probability_ai": 0.9
+            }
+          ],
+          "file_clues": [
+            {
+              "clue": "Camera details (EXIF)",
+              "found": true,
+              "detail": "Apple iPhone 13"
+            }
+          ],
+          "vote_tested": "35 of 40 correct (leave-one-out)",
+          "note": "only for pictures that are not 32x32 (optional field): our combiner (logistic regression) decides from our CLIP model, our measured-feature model and Smaug (pretrained, not ours); see api/fullcheck.py"
+        }
       }
     },
     "GET /audit/results": {

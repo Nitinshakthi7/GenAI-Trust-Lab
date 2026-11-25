@@ -82,7 +82,7 @@ export function GeneratorPage() {
   const loadCatalogue = catalogue.run;
   useEffect(() => { loadCatalogue(); }, [loadCatalogue]);
 
-  const models = (catalogue.data?.generators || []).filter((model) => model.id !== 'g-ddpm-cifar' || model.status === 'ready');
+  const models = (catalogue.data?.generators || []).filter((model) => model.status === 'ready');
   const datasets = [...new Set(models.map((model) => model.dataset))];
   const activeDataset = dataset || models.find((model) => model.status === 'ready')?.dataset || datasets[0] || '';
   const available = models.filter((model) => model.dataset === activeDataset);

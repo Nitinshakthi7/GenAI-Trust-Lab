@@ -67,11 +67,70 @@ function DetectorExamples({ image, onSelect, onError, disabled, loading }) {
   );
 }
 
+const measured = (value) => value == null ? placeholder : formatNumber(value);
+
+function FullCheck({ check, labels }) {
+  const features = [...(check.features || [])].sort((a, b) => (b.push == null ? -1 : Math.abs(b.push)) - (a.push == null ? -1 : Math.abs(a.push)));
+  const crops = check.crops || [];
+  return (
+    <section className="evidence-item full-check" aria-labelledby="full-check-heading">
+      <h3 id="full-check-heading">Full-size image check</h3>
+      <dl className="lab-scores">
+        <div><dt>Verdict</dt><dd>{labels[check.label] || unavailable}</dd></div>
+        <div><dt>Combined score</dt><dd>{check.probability_ai == null ? placeholder : check.probability_ai.toFixed(2)}</dd></div>
+      </dl>
+      <p>{check.decided_by === 'disagreement'
+        ? 'Unclear because our CLIP model and Smaug disagree: one says AI-made, the other says real. When the two strongest detectors disagree, we do not give a verdict.'
+        : check.decided_by === 'combiner'
+          ? 'Decided by our combiner, a logistic regression that learned how much to trust each detector.' + (check.agree ? ' All detectors agree.' : ' Our measured-feature model disagrees, and it is the weakest detector.')
+          : 'Our combiner is not available, so this is the plain average of the scores, cut at 0.5.'}</p>
+      {check.band && <p className="field-hint">Score 0 to 1, higher means more AI-like. It is a score, not a calibrated probability. {check.band.low === check.band.high
+        ? `AI-made if at least ${check.band.high.toFixed(2)}, otherwise Real. On the training images real and AI scores did not overlap, so the rule left no Unclear band.`
+        : `AI-made if at least ${check.band.high.toFixed(2)}, Real if at most ${check.band.low.toFixed(2)}, otherwise Unclear.`} The cut-offs were chosen on training images, never on the test images.</p>}
+      {check.vote_tested && <p className="field-hint">Tested: {check.vote_tested}.</p>}
+      <h4>The three detectors</h4>
+      <div className="table-scroll" tabIndex="0" role="region" aria-label="Full-size detectors table">
+        <table className="results-table">
+          <thead><tr><th scope="col">Model</th><th scope="col">Ours?</th><th scope="col">AI score</th><th scope="col">Counted in the final answer</th><th scope="col">Tested on our images</th></tr></thead>
+          <tbody>{(check.models || []).map((model) => <tr key={model.id}>
+            <th scope="row">{model.name}</th><td>{model.ours ? 'Ours' : 'Not ours'}</td><td>{model.probability_ai == null ? placeholder : model.probability_ai.toFixed(2)}</td>
+            <td>{model.counted == null ? placeholder : model.counted > 0 ? `towards AI (+${model.counted.toFixed(2)})` : `towards real (${model.counted.toFixed(2)})`}</td><td>{model.tested ?? placeholder}</td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+      <h4>Which features pushed the decision</h4>
+      <div className="table-scroll" tabIndex="0" role="region" aria-label="Feature push table">
+        <table className="results-table">
+          <thead><tr><th scope="col">Feature</th><th scope="col">This image</th><th scope="col">Typical real photo</th><th scope="col">Typical AI image</th><th scope="col">Push</th><th scope="col">What it means</th></tr></thead>
+          <tbody>{features.map((feature) => <tr key={feature.name}>
+            <th scope="row">{feature.name}</th><td>{measured(feature.value)}</td><td>{measured(feature.typical_real)}</td><td>{measured(feature.typical_ai)}</td>
+            <td>{feature.push == null ? placeholder : feature.push > 0 ? `towards AI (+${feature.push.toFixed(2)})` : `towards real (${feature.push.toFixed(2)})`}</td>
+            <td>{feature.meaning}</td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+      <p className="field-hint">Push comes from our measured-feature model (logistic regression). On images from AI tools it never saw it was close to chance, so read these pushes as a description of the image, not proof. Our CLIP model and Smaug decide from learned features, which cannot be listed.</p>
+      {crops.length > 0 && <>
+        <h4>Where Smaug looked</h4>
+        <ul>{crops.map((crop) => <li key={crop.part}>{crop.part[0].toUpperCase() + crop.part.slice(1)} part: score {crop.probability_ai.toFixed(2)}</li>)}</ul>
+        <p className="field-hint">Smaug scores three square crops of the image and averages them.</p>
+      </>}
+      <h4>File clues</h4>
+      <dl className="evidence-fields">
+        {(check.file_clues || []).map((clue) => <div key={clue.clue}><dt>{clue.clue}</dt><dd>{clue.found ? 'Found' + (clue.detail ? ': ' + clue.detail : '') : 'Not found'}</dd></div>)}
+      </dl>
+      <p className="field-hint">File clues are evidence, not proof: apps and screenshots can remove them, and they can be faked.</p>
+      {check.note && <p className="field-hint">{check.note}</p>}
+    </section>
+  );
+}
+
 function ScoreResults({ result }) {
   const labels = { real: 'Real', ai: 'AI-made', unclear: 'Unclear' };
   const source = { vae: 'VAE error map', ddpm: 'DDPM error map' }[result.heatmap_source];
   return (
     <div className="lab-result-body">
+      {result.full_check && <FullCheck check={result.full_check} labels={labels} />}
       <ResultNote result={result} demoLabel="Demo response · example scores" />
       {result.out_of_scope && <div className="scope-warning" role="status">
         <strong>Out of scope</strong>
@@ -182,7 +241,7 @@ function DetectorPage() {
       <PageIntro label="Image Detector" title="Question" accent="an image." art="prism.webp">
         Explore signals from a detector designed for 32×32 CIFAR-10-style images.
       </PageIntro>
-      <section id="workspace" className="shell lab-section lab-workbench" aria-label="Image analysis">
+      <section id="workspace" className="shell lab-section" aria-label="Image analysis">
         <div className="lab-panel">
           <h2>Analyze an image</h2>
           <DetectorExamples image={image} onSelect={selectExample} onError={setExampleError} disabled={request.loading} loading={loadingExample} />
@@ -196,7 +255,7 @@ function DetectorPage() {
             <button type="submit" className="button lab-button" disabled={!image || request.loading}>Analyze image</button>
           </form>
         </div>
-        <section className="lab-panel lab-results" aria-label="Detector results">
+        <section className="lab-panel lab-results detector-results" aria-label="Detector results">
           <div className="view-switch" role="group" aria-label="Detector result view">
             <button type="button" aria-pressed={view === 'analysis'} onClick={() => setView('analysis')}>Analysis</button>
             <button type="button" aria-pressed={view === 'evidence'} onClick={showEvidence}>Evidence</button>
@@ -291,6 +350,7 @@ function AuditorPage() {
   const results = useLabRequest('/audit/results');
   const match = useLabRequest('/audit/check');
   const [image, setImage] = useState(null);
+  const [run, setRun] = useState('a-500');
   const loadResults = results.run;
   useEffect(() => { loadResults(); }, [loadResults]);
 
@@ -305,7 +365,7 @@ function AuditorPage() {
       </PageIntro>
       <section className="shell lab-section dashboard" aria-labelledby="dashboard-title">
         <div className="lab-section-head">
-          <div><h2 id="dashboard-title">Experiment results</h2><p>Each run audits a separately trained diffusion model against its own training subset.</p></div>
+          <div><h2 id="dashboard-title">Experiment results</h2></div>
           {results.error && <button type="button" className="button lab-button" onClick={() => loadResults()}>Retry results</button>}
         </div>
         <RequestStatus request={results} loadingText="Loading experiments…" />
@@ -322,9 +382,16 @@ function AuditorPage() {
             <h2>Check similarity</h2>
             <form className="lab-upload" onSubmit={(event) => {
               event.preventDefault();
-              if (image) match.run({ image });
+              if (image) match.run({ image, run });
             }}>
               <UploadField id="auditor-upload" image={image} onImage={(selected) => { setImage(selected); match.reset(); }} />
+              <div className="lab-controls">
+                <div className="select-control"><label htmlFor="auditor-run">Compare with the training images of</label><select id="auditor-run" value={run} onChange={(event) => { setRun(event.target.value); match.reset(); }}>
+                  <option value="a-500">500 images (run a-500)</option>
+                  <option value="a-10000">10,000 images (run a-10000)</option>
+                  <option value="a-500-dup">500 rows, 30% repeats (run a-500-dup)</option>
+                </select></div>
+              </div>
               <button type="submit" className="button lab-button" disabled={!image || match.loading}>Find similar images</button>
               <RequestStatus request={match} loadingText="Checking similarity…" hide404 />
             </form>

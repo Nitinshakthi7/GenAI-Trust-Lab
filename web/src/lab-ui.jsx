@@ -109,7 +109,7 @@ export function UploadField({ id, label = 'Choose an image', image, onImage }) {
   return (
     <div className="upload-field">
       <label htmlFor={id}>{label}</label>
-      <p id={id + '-hint'} className="field-hint">PNG or JPG, up to 5 MB.</p>
+      <p id={id + '-hint'} className="field-hint">PNG or JPG, up to 20 MB.</p>
       <input ref={input} id={id} type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" aria-describedby={id + '-hint'} onChange={selectFile} />
       {error && <p role="alert" className="request-error">{error}</p>}
       {preview && image && <figure className="selected-image">

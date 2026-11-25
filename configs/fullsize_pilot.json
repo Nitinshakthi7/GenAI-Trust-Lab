@@ -1,0 +1,34 @@
+{
+  "run_id": "fullsize-pilot",
+  "train_folder": "data\\openfake\\train",
+  "test_folder": "data\\openfake\\test",
+  "train_real": 314,
+  "train_ai": 311,
+  "test_images": 500,
+  "side": 512,
+  "jpeg_quality": 90,
+  "cnn_C": 0.1,
+  "clip_C": 1.0,
+  "feature_C": 1.0,
+  "combiner_C": 1.0,
+  "combiner_inputs": [
+    "ours-clip",
+    "ours-features",
+    "smaug"
+  ],
+  "features": [
+    "Sharpness",
+    "Noise level",
+    "Fine-detail energy (%)",
+    "Colour saturation",
+    "Edge amount (%)"
+  ],
+  "clip": "openai/clip-vit-large-patch14 (frozen, image_embeds 768, normalized)",
+  "cnn_baseline": "torchvision resnet18 IMAGENET1K_V1 (frozen, avgpool 512)",
+  "smaug": "abacusai/Smaug-AI-Image-Detector",
+  "folds": "stratified 5-fold",
+  "seed": 42,
+  "unclear_band": "95th percentile of real out-of-fold combiner scores / 5th percentile of AI ones",
+  "evaluation": "test images from AI tools it never saw",
+  "note": "proposed, to tune"
+}

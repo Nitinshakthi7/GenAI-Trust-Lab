@@ -1,10 +1,10 @@
 # common.py - two small things that more than one API file needs:
 #   1. ApiError: how our code says "answer with this HTTP status and this message".
-#   2. read_upload: reads an uploaded image and checks it (PNG or JPG, at most 5 MB).
+#   2. read_upload: reads an uploaded image and checks it (PNG or JPG, at most 20 MB).
 # They live here so that main.py, generators.py and audit.py do not import each other in a circle.
 
 # The biggest image a user may upload (proposed, to tune).
-MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024     # phone photos can be bigger than 5 MB
 
 # The first bytes of a real PNG and a real JPG file. We check these, not the file name.
 PNG_START = b"\x89PNG\r\n\x1a\n"
