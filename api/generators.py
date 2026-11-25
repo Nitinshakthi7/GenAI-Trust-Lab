@@ -29,6 +29,7 @@ from model.vae import ConvVAE
 
 # Licence notes shown to the user (CIFAR-10 has no licence on its official page: to verify).
 FMNIST_LICENCE = "Fashion-MNIST: MIT licence"
+MNIST_LICENCE = "MNIST: CC BY-SA 3.0 licence"
 CIFAR_LICENCE = "CIFAR-10: the official page states no licence (to verify)"
 
 # The generators. "controls" lists the settings each one accepts (the website reads this).
@@ -39,10 +40,15 @@ CATALOGUE = {
     "g-vae-fmnist": dict(name="Conv VAE", dataset="Fashion-MNIST", family="vae", channels=1,
                          controls=["seed", "n", "interpolate"], licence=FMNIST_LICENCE),
     "g-cddpm-fmnist": dict(name="Conditional diffusion (DDIM)", dataset="Fashion-MNIST", family="cddpm",
-                           channels=1, controls=["seed", "n", "steps", "class_id", "guidance"],
-                           licence=FMNIST_LICENCE),
+                           channels=1, controls=["seed", "n", "steps", "class_id", "guidance", "show_steps"],
+                           classes=FMNIST_CLASSES, licence=FMNIST_LICENCE),
+    "g-vae-mnist": dict(name="Conv VAE", dataset="MNIST", family="vae", channels=1,
+                        controls=["seed", "n", "interpolate"], licence=MNIST_LICENCE),
+    "g-cddpm-mnist": dict(name="Conditional diffusion (DDIM)", dataset="MNIST", family="cddpm",
+                          channels=1, controls=["seed", "n", "steps", "class_id", "guidance", "show_steps"],
+                          classes=[str(digit) for digit in range(10)], licence=MNIST_LICENCE),
     "g-ddpm-cifar": dict(name="Diffusion (DDIM)", dataset="CIFAR-10", family="ddpm", channels=3,
-                         controls=["seed", "n", "steps"], licence=CIFAR_LICENCE),
+                         controls=["seed", "n", "steps", "show_steps"], licence=CIFAR_LICENCE),
     "g-dcgan-cifar": dict(name="DCGAN", dataset="CIFAR-10", family="dcgan", channels=3,
                           controls=[], licence=CIFAR_LICENCE),
 }
@@ -77,6 +83,7 @@ class GenerateRequest(BaseModel):
     guidance: Optional[float] = None
     class_id: Optional[int] = None
     interpolate: Optional[Interpolate] = None
+    show_steps: Optional[bool] = None             # diffusion only: also send 8 frames of the first image's denoising
 
 
 # ------------------------------------------------------- loading models lazily
@@ -149,7 +156,7 @@ def _describe(gid):
         "size_mb": round(path.stat().st_size / 1e6, 2) if path.exists() else None,
         "status": status,
         "controls": info["controls"],
-        "classes": FMNIST_CLASSES if gid == "g-cddpm-fmnist" else [],
+        "classes": info.get("classes", []),
         "licence_note": info["licence"],
     }
 
@@ -163,7 +170,7 @@ def list_generators():
 
 def _check_request(req, info):
     """Check the request. Returns (steps, guidance) after filling in the defaults."""
-    for control in ("steps", "guidance", "class_id", "interpolate"):
+    for control in ("steps", "guidance", "class_id", "interpolate", "show_steps"):
         if getattr(req, control) is not None and control not in info["controls"]:
             raise ApiError(400, f"{control} is not supported by {req.generator_id}")
     if not 0 <= req.seed <= MAX_SEED:
@@ -204,13 +211,15 @@ def _make_vae(model, req):
 
 
 def _make_diffusion(entry, info, req, steps, guidance):
-    """Returns (images, seeds). One DDIM run per image, image i uses seed + i."""
+    """Returns (images, seeds, frames). One DDIM run per image, image i uses seed + i.
+    frames: None, or with show_steps the 8 (step, image) frames of the first image."""
     seeds = [req.seed + i for i in range(req.n)]
     ids = None if req.class_id is None else torch.tensor([req.class_id])
     shape = (1, info["channels"], 32, 32)
-    images = [ddim_sample(entry["model"], shape, steps, s, class_ids=ids, guidance=guidance or 0.0,
-                          schedule=entry["schedule"]) for s in seeds]
-    return torch.cat(images), seeds
+    run = lambda s, keep: ddim_sample(entry["model"], shape, steps, s, class_ids=ids, guidance=guidance or 0.0,
+                                      schedule=entry["schedule"], return_steps=keep)
+    first, frames = run(seeds[0], True) if req.show_steps else (run(seeds[0], False), None)
+    return torch.cat([first] + [run(s, False) for s in seeds[1:]]), seeds, frames
 
 
 def _to_png_base64(image, gid, info, seed):
@@ -240,12 +249,15 @@ def generate(req):
     steps, guidance = _check_request(req, info)       # bad requests are answered before any model is loaded
     entry = _load(gid)
     try:
+        frames = None
         if info["family"] == "vae":
             batch, seeds = _make_vae(entry["model"], req)
         else:
-            batch, seeds = _make_diffusion(entry, info, req, steps, guidance)
+            batch, seeds, frames = _make_diffusion(entry, info, req, steps, guidance)
         images = [{"png_base64": _to_png_base64(img, gid, info, s), "seed": s, "class_id": req.class_id}
                   for img, s in zip(batch, seeds)]
+        if frames is not None:
+            frames = [{"step": step, "png_base64": _to_png_base64(img[0], gid, info, seeds[0])} for step, img in frames]
     except ApiError:
         raise
     except Exception:
@@ -253,10 +265,13 @@ def generate(req):
     note = "Image number i uses seed + i, so any single image can be made again with n=1."
     if req.interpolate:
         note = "The first and last images come from seed and seed_b; the ones between are blends. n is ignored."
-    return {
+    answer = {
         "generator_id": gid,
         "images": images,
         "metadata": {"model": info["name"], "dataset": info["dataset"], "steps": steps,
                      "guidance": guidance, "label": LABEL},
         "note": note,
     }
+    if frames is not None:              # only with show_steps, so the answer without it is unchanged
+        answer["denoise_frames"] = frames
+    return answer

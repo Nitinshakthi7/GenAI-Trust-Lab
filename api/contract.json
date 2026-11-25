@@ -78,11 +78,21 @@
             "points": [
               {
                 "x": 500,
-                "memorization_rate": null
+                "memorization_rate": null,
+                "memorization_rate_mean": null,
+                "memorization_rate_sd": null,
+                "flagged_mean": null,
+                "flagged_sd": null,
+                "n_seeds": 0
               },
               {
                 "x": 10000,
-                "memorization_rate": null
+                "memorization_rate": null,
+                "memorization_rate_mean": null,
+                "memorization_rate_sd": null,
+                "flagged_mean": null,
+                "flagged_sd": null,
+                "n_seeds": 0
               }
             ]
           },
@@ -92,11 +102,21 @@
             "points": [
               {
                 "x": 0,
-                "memorization_rate": null
+                "memorization_rate": null,
+                "memorization_rate_mean": null,
+                "memorization_rate_sd": null,
+                "flagged_mean": null,
+                "flagged_sd": null,
+                "n_seeds": 0
               },
               {
                 "x": 30,
-                "memorization_rate": null
+                "memorization_rate": null,
+                "memorization_rate_mean": null,
+                "memorization_rate_sd": null,
+                "flagged_mean": null,
+                "flagged_sd": null,
+                "n_seeds": 0
               }
             ]
           }
@@ -119,11 +139,19 @@
             "rank": 1,
             "distance": 5.5,
             "phash_distance": 12,
+            "clip_similarity": 0.71,
             "image_png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
           }
         ],
         "flag": "not_flagged",
-        "note": "Example text only, not a result. Run a-500: your image was compared with 500 different training images by pixel distance (a lower distance means more similar). It is a possible copy only if the nearest distance is below 11.82, the 1st percentile of the distances of real images the model never saw. This measures pixel similarity only; it is not legal copying."
+        "clip_nearest": {
+          "clip_similarity": 0.72,
+          "distance": 6.1,
+          "image_png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
+        },
+        "clip_flag": "not_flagged",
+        "clip_threshold": 0.937,
+        "note": "Example text only, not a result. Run a-500: your image was compared with 500 different training images by pixel distance (a lower distance means more similar). It is a possible copy only if the nearest distance is below 11.82, the 1st percentile of the distances of real images the model never saw. CLIP similarity (0 to 1; higher means more similar in content, and it also finds images moved by a few pixels or mirrored) makes it a possible copy above 0.937, the 99th percentile of real images the model never saw. This measures similarity only; it is not legal copying. (clip_similarity, clip_nearest, clip_flag and clip_threshold are null while the run's CLIP cache is not ready.)"
       }
     },
     "POST /compare": {
@@ -165,6 +193,12 @@
             "image_a": "tabby 62%, tiger cat 20%, Egyptian cat 9%",
             "image_b": "Persian cat 70%, Angora 10%, lynx 5%",
             "does_not_prove": "Descriptive only."
+          },
+          {
+            "feature": "CLIP similarity (CLIP ViT-L/14, whole image)",
+            "image_a": "0.81",
+            "image_b": "0.81",
+            "does_not_prove": "Descriptive only. Similar meaning is not the same picture; CLIP is pretrained by OpenAI, not by us. It sees the centre square of each picture."
           }
         ],
         "differences": [
@@ -213,7 +247,8 @@
         "interpolate": {
           "seed_b": 7,
           "frames": 2
-        }
+        },
+        "show_steps": null
       },
       "response": {
         "generator_id": "g-vae-fmnist",
@@ -236,7 +271,13 @@
           "guidance": null,
           "label": "small model, expect low quality"
         },
-        "note": "stub: example text"
+        "note": "stub: example text",
+        "denoise_frames": [
+          {
+            "step": 1,
+            "png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
+          }
+        ]
       }
     },
     "POST /evidence": {

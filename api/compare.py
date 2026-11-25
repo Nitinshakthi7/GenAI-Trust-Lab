@@ -11,7 +11,9 @@
 #   5. A pretrained ResNet-18 (ImageNet, model/compare_cnn.py) adds a region map (which parts of one picture
 #      have no similar part in the other) and 3 table rows. If its weights cannot be loaded, this step is
 #      skipped: regions is null and the note says so.
-#   6. A short summary written from the numbers by simple rules.
+#   6. A pretrained CLIP ViT-L/14 (OpenAI, model/fullsize.py) adds one table row: the cosine similarity of the two
+#      whole-image embeddings. If CLIP cannot be loaded, the row says "not available".
+#   7. A short summary written from the numbers by simple rules.
 # The "words" part (a vision model that describes the differences) is NOT built yet:
 # "differences" is always empty and "source" is always "heatmap_only".
 
@@ -28,7 +30,7 @@ from skimage.metrics import structural_similarity
 from sklearn.cluster import KMeans
 
 from api.common import ApiError
-from model import compare_cnn
+from model import compare_cnn, fullsize
 from model.utils import SEED                # the one project seed (this only reads a number)
 
 SIZE = 224                       # both images are shrunk to 224 x 224 for the measurements (proposed)
@@ -40,6 +42,9 @@ NOTE = json.loads((Path(__file__).parent / "contract.json").read_text(encoding="
 CNN_NOTE = ("CNN parts use a pretrained ResNet-18 (ImageNet), not trained by us; both images were resized to 224x224. "
             "The pictures are stretched to a square, so their shape is not kept.")
 CNN_MISSING = "The CNN part is not available on this server (the ResNet-18 weights could not be loaded), so the region map and CNN rows are left out."
+CLIP_FEATURE = "CLIP similarity (CLIP ViT-L/14, whole image)"
+CLIP_DOES_NOT_PROVE = ("Descriptive only. Similar meaning is not the same picture; CLIP is pretrained by OpenAI, not by us. "
+                       "It sees the centre square of each picture.")
 MAX_TINT = 0.6                   # the strongest red tint on the region map (0 = picture only, 1 = solid red)
 TINT_RGB = np.array([255, 60, 0])
 
@@ -168,6 +173,16 @@ def cnn_part(pixels_a, pixels_b):
         return None
 
 
+def clip_row(bytes_a, bytes_b):
+    """One table row: cosine similarity of the CLIP embeddings (-1 to 1). 'not available' if CLIP cannot run."""
+    try:
+        a, b = (fullsize.clip_embedding(fullsize.open_image(io.BytesIO(data))) for data in (bytes_a, bytes_b))
+        text = f"{float(a @ b):.2f}"               # both embeddings have length 1, so the dot product is the cosine
+    except Exception:
+        text = "not available"
+    return row(CLIP_FEATURE, text, text, CLIP_DOES_NOT_PROVE)
+
+
 # ----------------------------------------------------------------- 4. table and summary
 
 def row(feature, text_a, text_b, does_not_prove):
@@ -248,6 +263,7 @@ def compare(bytes_a, bytes_b, use_words, focus):
     if cnn is not None:
         regions, note = cnn[0], NOTE + " " + CNN_NOTE
         table += cnn[1]
+    table.append(clip_row(bytes_a, bytes_b))        # after open_image, so oversized pictures are already refused
     return {
         "similarity": {"ssim": ssim, "lpips": None},
         "diff_heatmap_png_base64": heatmap_png_base64(pixels_a, pixels_b),

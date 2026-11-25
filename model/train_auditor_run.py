@@ -5,7 +5,14 @@
 #   python -m model.train_auditor_run --run a-500
 #   python -m model.train_auditor_run --run a-10000
 #   python -m model.train_auditor_run --run a-500-dup
+#   python -m model.train_auditor_run --run a-500 --seed 2      (the same run with another training seed: run id a-500-s2)
 #   python -m model.train_auditor_run --run a-500 --steps 20 --samples 16 --out-dir SOME_FOLDER   (quick test)
+#
+# Seeds (for error bars): the default --seed 42 is today's run, unchanged (run id a-500, sample seed 4242).
+# Any other seed changes the training seed AND the sample seed (4242 + 100 x (seed - 42)) and adds "-s<seed>"
+# to the run id (a-500-s2: configs/a-500-s2.json, weights/a-500-s2.pt, results/audit_a-500-s2.json).
+# The training IMAGES stay the same (the subset is always drawn with seed 42); only the training randomness changes.
+# EXTRA_SEEDS lists the seeds model/audit_summary.py looks for. POST /audit/check only uses the base runs (RUNS).
 #
 # The three runs (the training images are drawn from the 50,000 CIFAR-10 TRAIN images, seed 42):
 #   a-500       500 different images
@@ -54,6 +61,12 @@ RUNS = {
     "a-10000": dict(once=10000, twice=0),
     "a-500-dup": dict(once=350, twice=75),
 }
+EXTRA_SEEDS = (2, 3)      # the extra training seeds for error bars (run ids a-500-s2, a-500-s3, ...)
+
+
+def run_id(run, seed=SEED):
+    """The name a run's files get: the base name for the default seed (today's runs), else e.g. a-500-s2."""
+    return run if seed == SEED else f"{run}-s{seed}"
 
 
 def subset_rows(run):
@@ -71,12 +84,12 @@ def duplicate_share(rows):
     return 100.0 * counts[counts > 1].sum() / len(rows)
 
 
-def make_samples(model, schedule, count):
-    """DDIM images from the averaged model, in chunks. The first chunk uses seed 4242, the next 4243, ..."""
+def make_samples(model, schedule, count, sample_seed=SAMPLE_SEED):
+    """DDIM images from the averaged model, in chunks. The first chunk uses sample_seed (4242), the next 4243, ..."""
     pieces = []
     for i, start in enumerate(range(0, count, SAMPLE_CHUNK)):
         shape = (min(SAMPLE_CHUNK, count - start), 3, 32, 32)
-        pieces.append(ddim_sample(model, shape, SAMPLE_STEPS, SAMPLE_SEED + i, schedule=schedule))
+        pieces.append(ddim_sample(model, shape, SAMPLE_STEPS, sample_seed + i, schedule=schedule))
     return torch.cat(pieces)
 
 
@@ -90,6 +103,7 @@ def summary(values, percentile):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--run", required=True, choices=list(RUNS))
+    parser.add_argument("--seed", type=int, default=SEED, help="training seed (default 42 = today's runs); another seed writes <run>-s<seed>")
     parser.add_argument("--steps", type=int, default=STEPS)
     parser.add_argument("--samples", type=int, default=SAMPLES)
     parser.add_argument("--max-minutes", type=float, default=0,
@@ -98,7 +112,8 @@ def main():
                         help="put the config, weights and result all in this folder (default: configs/, weights/, results/)")
     parser.add_argument("--threads", type=int, default=4, help="CPU threads (keeps the computer usable)")
     args = parser.parse_args()
-    run = args.run
+    run, seed = run_id(args.run, args.seed), args.seed
+    sample_seed = SAMPLE_SEED + 100 * (seed - SEED)     # seed 42 -> 4242 (today), seed 2 -> 242, seed 3 -> 342
     torch.set_num_threads(args.threads)
 
     if args.out_dir:
@@ -107,22 +122,22 @@ def main():
         config_file, weights_file, result_file = CONFIGS_DIR / f"{run}.json", WEIGHTS_DIR / f"{run}.pt", RESULTS_DIR / f"audit_{run}.json"
 
     # The training rows come from the CIFAR-10 TRAIN images only.
-    rows = subset_rows(run)
+    rows = subset_rows(args.run)
     unique = np.unique(rows)
     train_all = load_cifar10("train")
     batch_size = min(MAX_BATCH, len(rows))
     save_json(config_file, {                           # written BEFORE training
         "run_id": run, "dataset": "cifar10", "part": "random subset of the 50,000 train images (seed 42)",
         "training_rows": len(rows), "unique_images": len(unique),
-        "duplicate_share_percent": round(duplicate_share(rows), 2), "seed": SEED,
+        "duplicate_share_percent": round(duplicate_share(rows), 2), "seed": seed,
         "steps": args.steps, "max_minutes": args.max_minutes, "batch_size": batch_size,
         "learning_rate": LEARNING_RATE, "optimizer": "Adam", "ema_decay": EMA_DECAY,
         "timesteps": TIMESTEPS, "noise_schedule": SCHEDULE, "samples": args.samples,
-        "sample_steps": SAMPLE_STEPS, "sample_seed": SAMPLE_SEED,
+        "sample_steps": SAMPLE_STEPS, "sample_seed": sample_seed,
         "calibration_percentile": PERCENTILE, "heldout_part": "calibration", "note": "proposed, to tune",
     })
 
-    set_seed(SEED)
+    set_seed(seed)
     device = get_device()
     gpu = torch.cuda.get_device_name(0) if device.type == "cuda" else "cpu"
     images = train_all[torch.from_numpy(rows)].to(device)         # the training rows (repeats included)
@@ -156,7 +171,7 @@ def main():
     torch.save(ema.model.state_dict(), weights_file)
 
     # Audit: make images, then measure the distance to the nearest training image.
-    generated = make_samples(ema.model, schedule, args.samples)
+    generated = make_samples(ema.model, schedule, args.samples, sample_seed)
     train_set = train_all[torch.from_numpy(unique)].to(device)    # each training image once
     heldout = load_heldout().to(device)                           # the calibration part only
     threshold, held_distances = calibrate(heldout, train_set, PERCENTILE)

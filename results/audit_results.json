@@ -6,11 +6,21 @@
       "points": [
         {
           "x": 500,
-          "memorization_rate": 0.026
+          "memorization_rate": 0.026,
+          "memorization_rate_mean": 0.026,
+          "memorization_rate_sd": null,
+          "flagged_mean": 26.0,
+          "flagged_sd": null,
+          "n_seeds": 1
         },
         {
           "x": 10000,
-          "memorization_rate": 0.004
+          "memorization_rate": 0.004,
+          "memorization_rate_mean": 0.004,
+          "memorization_rate_sd": null,
+          "flagged_mean": 4.0,
+          "flagged_sd": null,
+          "n_seeds": 1
         }
       ]
     },
@@ -20,11 +30,21 @@
       "points": [
         {
           "x": 0,
-          "memorization_rate": 0.026
+          "memorization_rate": 0.026,
+          "memorization_rate_mean": 0.026,
+          "memorization_rate_sd": null,
+          "flagged_mean": 26.0,
+          "flagged_sd": null,
+          "n_seeds": 1
         },
         {
           "x": 30,
-          "memorization_rate": 0.039
+          "memorization_rate": 0.039,
+          "memorization_rate_mean": 0.039,
+          "memorization_rate_sd": null,
+          "flagged_mean": 39.0,
+          "flagged_sd": null,
+          "n_seeds": 1
         }
       ]
     }
@@ -76,5 +96,5 @@
       "distance": 9.2024
     }
   ],
-  "note": "Each run audits its own small diffusion model. Similarity between images only: it does not decide legal copying. Measured by model/train_auditor_run.py; settings are proposed."
+  "note": "Each run audits its own small diffusion model. Similarity between images only: it does not decide legal copying. Measured by model/train_auditor_run.py; settings are proposed. Error bars: mean and standard deviation over the training seeds that have run (n_seeds)."
 }

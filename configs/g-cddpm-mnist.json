@@ -1,0 +1,21 @@
+{
+  "run_id": "g-cddpm-mnist",
+  "dataset": "mnist",
+  "part": "train (all 60,000)",
+  "num_images": 60000,
+  "seed": 42,
+  "epochs": 40,
+  "epochs_reason": "45 min budget at 68-120 s per epoch (measured); --max-minutes 45 stops it cleanly",
+  "max_minutes": 45.0,
+  "batch_size": 128,
+  "learning_rate": 0.0002,
+  "optimizer": "Adam",
+  "ema_decay": 0.999,
+  "timesteps": 1000,
+  "noise_schedule": "cosine",
+  "num_classes": 10,
+  "label_dropout": 0.1,
+  "sample_guidance": 3.0,
+  "sample_steps": 50,
+  "note": "proposed, to tune"
+}

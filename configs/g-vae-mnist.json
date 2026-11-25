@@ -1,0 +1,13 @@
+{
+  "run_id": "g-vae-mnist",
+  "dataset": "mnist",
+  "part": "train (all 60,000)",
+  "num_images": 60000,
+  "seed": 42,
+  "epochs": 150,
+  "max_minutes": 15.0,
+  "batch_size": 128,
+  "learning_rate": 0.0002,
+  "latent_size": 128,
+  "note": "proposed, to tune"
+}

@@ -1,6 +1,6 @@
 # data.py - loads the datasets and cuts CIFAR-10 into the four fixed parts.
 # Images come back as float tensors with pixel values between -1 and 1.
-# CIFAR-10 is 3x32x32. Fashion-MNIST is 28x28 with 1 channel, so we pad it
+# CIFAR-10 is 3x32x32. Fashion-MNIST (and MNIST) is 28x28 with 1 channel, so we pad it
 # to 32x32 here, and every model can then work at 32x32.
 #
 # The four CIFAR-10 parts (written once to data/splits.csv, seed 42):
@@ -56,6 +56,13 @@ def load_fmnist_labeled(split):
     """Same images as load_fmnist, plus the labels. Returns ((N,1,32,32) floats, (N,) ints 0-9)."""
     ds = datasets.FashionMNIST(DATA_DIR / "fmnist", train=(split == "train"), download=True)
     return load_fmnist(split), ds.targets.long()
+
+
+def load_mnist_labeled(split):
+    """MNIST digits, padded like Fashion-MNIST. split 'train' (60,000) or 'test' (10,000).
+    Returns ((N,1,32,32) floats, (N,) ints 0-9, the digit)."""
+    ds = datasets.MNIST(DATA_DIR / "mnist", train=(split == "train"), download=True)
+    return F.pad(_to_range(ds.data).unsqueeze(1), (2, 2, 2, 2), value=-1.0), ds.targets.long()
 
 
 def make_splits():

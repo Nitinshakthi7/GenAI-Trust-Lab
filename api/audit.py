@@ -17,6 +17,13 @@
 #     and kept in memory after the first request
 #   - a run whose results file does not exist yet (still training) answers 503; an unknown run answers 400
 #   - a picture that is not 32x32 is resized to 32x32 first (bilinear, like the detector) and the note says so
+#   - CLIP similarity (model/auditor_clip.py) next to pixel L2 and pHash: each of the 3 nearest gets clip_similarity, plus
+#     clip_nearest (the training image with the highest CLIP similarity), clip_flag ("possible_copy" above the run's CLIP
+#     threshold, the 99th percentile of held-out calibration images, else "not_flagged") and clip_threshold. CLIP finds
+#     copies moved by a few pixels or mirrored, which pixel L2 misses. The CLIP numbers of a run's training images are
+#     cached under logs/; while a run has no cache yet, the first request starts building it in the background and the
+#     CLIP fields are null (the note says so). flag stays the pixel flag, as before.
+#   - only the three base runs (RUNS); the extra-seed runs (a-500-s2, ...) are for the results summary only
 
 import base64
 import io
@@ -32,7 +39,8 @@ from scipy.fft import dct
 
 from api.common import ApiError
 from api.detect import open_picture
-from model.audit_summary import build_summary
+from model import auditor_clip
+from model.audit_summary import POINT_FIELDS, build_summary
 from model.data import load_cifar10
 from model.make_fakes import to_float, to_uint8
 from model.train_auditor_run import RUNS, subset_rows
@@ -57,7 +65,7 @@ def has_contract_shape(data):
     for experiment in data["experiments"]:
         if not (has_names(experiment, ["name", "x_label", "points"]) and isinstance(experiment["points"], list)):
             return False
-        if not all(has_names(point, ["x", "memorization_rate"]) for point in experiment["points"]):
+        if not all(has_names(point, POINT_FIELDS) for point in experiment["points"]):
             return False
     return all(has_names(pair, ["generated_png_base64", "nearest_png_base64", "distance"]) for pair in data["examples"])
 
@@ -84,6 +92,10 @@ SIZE = 32                         # the Auditor works on 32 x 32 pictures
 
 _train = {}                       # run -> its different training images, floats in -1..1, shape (K,3,32,32)
 _load_lock = threading.Lock()     # only one request loads them
+CLIP_AUTO_BUILD = True            # a run without a CLIP cache starts building it in the background (api/check_api.py turns it off)
+_clip = {}                        # run -> (CLIP embeddings of its training images, CLIP threshold), once its cache exists
+_clip_jobs = {}                   # run -> the background thread building its CLIP cache
+_clip_lock = threading.Lock()
 
 
 def run_settings(run):
@@ -112,6 +124,45 @@ def training_images(run):
             except Exception:
                 raise ApiError(503, "audit run not ready: the CIFAR-10 training images could not be loaded")
         return _train[run]
+
+
+def clip_index(run):
+    """(training embeddings, CLIP threshold) of this run, or None while its CLIP cache does not exist yet. The first
+    request for such a run starts building the cache in the background (about 30 s per 1,000 images on the GPU)."""
+    with _clip_lock:
+        if run not in _clip:
+            found = auditor_clip.run_index(run, build=False)
+            if found is not None:
+                _clip[run] = found
+            elif CLIP_AUTO_BUILD and not (run in _clip_jobs and _clip_jobs[run].is_alive()):
+                _clip_jobs[run] = threading.Thread(target=auditor_clip.run_index, args=(run,), daemon=True)
+                _clip_jobs[run].start()
+        return _clip.get(run)
+
+
+def clip_part(run, pixels, train, distances):
+    """(CLIP similarity to every training image or None, the CLIP fields of the answer, the CLIP sentence of the note)."""
+    empty = {"clip_nearest": None, "clip_flag": None, "clip_threshold": None}
+    try:
+        index = clip_index(run)
+        if index is None:
+            return None, empty, (f" CLIP similarity is not ready yet for run {run} (it is prepared once per run and can take "
+                                 "a few minutes); the pixel answer above does not need it.")
+        embeddings, threshold = index
+        if len(embeddings) != len(train):
+            raise ValueError("the CLIP cache does not match the training images")
+        sims = embeddings @ auditor_clip.embed(pixels[None])[0]          # cosine similarity to every training image
+    except Exception:
+        return None, empty, " CLIP similarity is not available right now; the pixel answer above does not need it."
+    best = int(sims.argmax())
+    top, threshold = round(float(sims[best]), 4), round(threshold, 4)       # the flag follows the numbers the answer shows
+    fields = {"clip_nearest": {"clip_similarity": top, "distance": round(float(distances[best]), 4),
+                               "image_png_base64": png_base64(to_uint8(train[best:best + 1])[0])},
+              "clip_flag": "possible_copy" if top > threshold else "not_flagged",
+              "clip_threshold": threshold}
+    return sims, fields, (" CLIP similarity (0 to 1; higher means more similar in content, and it also finds images moved by a "
+                          f"few pixels or mirrored) makes it a possible copy above {threshold:.3f}, the 99th percentile of real "
+                          "images the model never saw.")
 
 
 def phash(pixels):
@@ -143,15 +194,17 @@ def audit_check(data, run):
     distances = (train.flatten(1) - query.flatten(1)).norm(dim=1)       # L2 distance to every training image
     nearest = torch.argsort(distances)[:NEAREST].tolist()
     mine = phash(pixels)
+    sims, clip_fields, clip_note = clip_part(run, pixels, train, distances)
     found = []
     for rank, (i, theirs) in enumerate(zip(nearest, to_uint8(train[nearest])), start=1):
         found.append({"rank": rank, "distance": round(float(distances[i]), 4),
-                      "phash_distance": int((mine != phash(theirs)).sum()), "image_png_base64": png_base64(theirs)})
+                      "phash_distance": int((mine != phash(theirs)).sum()),
+                      "clip_similarity": None if sims is None else round(float(sims[i]), 4), "image_png_base64": png_base64(theirs)})
     note = (f"Run {run}: your image was compared with {len(train)} different training images by pixel distance "
             "(a lower distance means more similar). It is a possible copy only if the nearest distance is below "
-            f"{threshold:.2f}, the 1st percentile of the distances of real images the model never saw. "
-            "This measures pixel similarity only; it is not legal copying.")
+            f"{threshold:.2f}, the 1st percentile of the distances of real images the model never saw."
+            f"{clip_note} This measures similarity only; it is not legal copying.")
     if size != (SIZE, SIZE):
         note += f" Your image was {size[0]}x{size[1]}, so it was resized to {SIZE}x{SIZE} first."
     flag = "possible_copy" if float(distances[nearest[0]]) < threshold else "not_flagged"
-    return {"nearest": found, "flag": flag, "note": note}
+    return {"nearest": found, "flag": flag, **clip_fields, "note": note}

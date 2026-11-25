@@ -4,14 +4,16 @@
 #   python -m model.train_vae --run g-vae-cifar
 #   python -m model.train_vae --run d-vae-cifar
 #   python -m model.train_vae --run g-vae-fmnist
+#   python -m model.train_vae --run g-vae-mnist --epochs 150 --max-minutes 15 (stop cleanly after ~15 min)
 #   python -m model.train_vae --run g-vae-cifar --epochs 1     (quick test)
 #
-# The three runs:
+# The runs:
 #   g-vae-cifar   the GENERATOR for CIFAR-10, trained on all 50,000 CIFAR-10 train images (seed 42)
 #   d-vae-cifar   the DETECTOR's anomaly-score VAE, trained ONLY on the 'ddpm_train' part
 #                 (30,000 images) with a different seed (43), so the classifier's
 #                 real images (the 'clf_train' part) stay unseen by it
 #   g-vae-fmnist  the GENERATOR for Fashion-MNIST, trained on its 60,000 train images (seed 42)
+#   g-vae-mnist   the GENERATOR for MNIST digits, trained on its 60,000 train images (seed 42)
 #
 # What it writes (nothing is overwritten except files of the same run):
 #   configs/<run>.json        settings, written BEFORE training starts
@@ -25,7 +27,7 @@ import time
 import torch
 from torchvision.utils import save_image
 
-from model.data import load_cifar10, load_fmnist, load_part
+from model.data import load_cifar10, load_fmnist, load_mnist_labeled, load_part
 from model.utils import (CONFIGS_DIR, FAKES_DIR, RESULTS_DIR, SEED, WEIGHTS_DIR,
                          count_params, get_device, save_json, set_seed)
 from model.vae import ConvVAE, batch_loss
@@ -44,6 +46,8 @@ RUNS = {
                         load=lambda: load_part("ddpm_train")),
     "g-vae-fmnist": dict(dataset="fmnist", part="train (all 60,000)", channels=1, seed=SEED,
                          load=lambda: load_fmnist("train")),
+    "g-vae-mnist": dict(dataset="mnist", part="train (all 60,000)", channels=1, seed=SEED,
+                        load=lambda: load_mnist_labeled("train")[0]),
 }
 
 
@@ -75,6 +79,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--run", required=True, choices=list(RUNS))
     parser.add_argument("--epochs", type=int, default=EPOCHS)
+    parser.add_argument("--max-minutes", type=float, default=0,
+                        help="stop cleanly after about this many minutes (0 = no limit)")
     args = parser.parse_args()
     run, info = args.run, RUNS[args.run]
 
@@ -82,7 +88,7 @@ def main():
     save_json(CONFIGS_DIR / f"{run}.json", {           # written BEFORE training
         "run_id": run, "dataset": info["dataset"], "part": info["part"],
         "num_images": len(images), "seed": info["seed"], "epochs": args.epochs,
-        "batch_size": BATCH_SIZE, "learning_rate": LEARNING_RATE,
+        "max_minutes": args.max_minutes, "batch_size": BATCH_SIZE, "learning_rate": LEARNING_RATE,
         "latent_size": LATENT_SIZE, "note": "proposed, to tune",
     })
 
@@ -94,7 +100,8 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     print(f"run {run} | {len(images)} images | device: {gpu}", flush=True)
 
-    seconds, loss = [], None
+    run_start = time.time()
+    seconds, loss, stopped_early = [], None, False
     for epoch in range(args.epochs):
         start = time.time()
         loss = train_one_epoch(model, optimizer, images)
@@ -102,13 +109,19 @@ def main():
             torch.cuda.synchronize()                   # wait for the GPU so the timing is honest
         seconds.append(time.time() - start)
         print(f"epoch {epoch + 1}/{args.epochs}  loss {loss:.2f}  {seconds[-1]:.1f} s", flush=True)
+        elapsed = time.time() - run_start
+        if args.max_minutes and elapsed + seconds[-1] > args.max_minutes * 60 and epoch + 1 < args.epochs:
+            print(f"time limit of {args.max_minutes} min reached, stopping cleanly", flush=True)
+            stopped_early = True
+            break
 
     WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
     weights_file = WEIGHTS_DIR / f"{run}.pt"
     torch.save(model.state_dict(), weights_file)
     save_sample_grid(model, run, info["channels"])
     save_json(RESULTS_DIR / f"train_{run}.json", {     # only numbers measured in this run
-        "run_id": run, "epochs_run": args.epochs,
+        "run_id": run, "epochs_run": len(seconds), "stopped_by_time_limit": stopped_early,
+        "total_minutes": round((time.time() - run_start) / 60, 2),
         "seconds_per_epoch": round(sum(seconds) / len(seconds), 2),
         "final_loss": round(loss, 2),                  # average training loss of the last epoch
         "parameter_count": count_params(model),

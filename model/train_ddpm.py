@@ -2,14 +2,16 @@
 #
 # Run it from the project folder, for example:
 #   python -m model.train_ddpm --run g-cddpm-fmnist
+#   python -m model.train_ddpm --run g-cddpm-mnist --epochs 40 --max-minutes 45
 #   python -m model.train_ddpm --run g-ddpm-cifar
 #   python -m model.train_ddpm --run d-ddpm-cifar
 #   python -m model.train_ddpm --run g-ddpm-cifar --epochs 1      (quick test)
 #   python -m model.train_ddpm --run g-ddpm-cifar --max-minutes 35 (stop cleanly after ~35 min)
 #
-# The three runs:
+# The runs:
 #   g-cddpm-fmnist  the GENERATOR for Fashion-MNIST: class-conditional (10 labels) with
 #                   classifier-free guidance, trained on the 60,000 train images (seed 42)
+#   g-cddpm-mnist   the same for MNIST digits (label = the digit 0-9), 60,000 train images (seed 42)
 #   g-ddpm-cifar    the GENERATOR for CIFAR-10: no labels, trained on all 50,000
 #                   CIFAR-10 train images (seed 42)
 #   d-ddpm-cifar    the DETECTOR's reconstruction model: no labels, trained ONLY on the
@@ -28,7 +30,7 @@ import time
 import torch
 from torchvision.utils import save_image
 
-from model.data import load_cifar10, load_fmnist_labeled, load_part
+from model.data import load_cifar10, load_fmnist_labeled, load_mnist_labeled, load_part
 from model.ddpm import EMA, TinyUNet, ddim_sample, ddpm_loss, make_schedule
 from model.utils import (CONFIGS_DIR, FAKES_DIR, RESULTS_DIR, SEED, WEIGHTS_DIR,
                          count_params, get_device, save_json, set_seed)
@@ -49,6 +51,8 @@ SAVE_EVERY = 5          # save the weights every this many epochs
 RUNS = {
     "g-cddpm-fmnist": dict(dataset="fmnist", part="train (all 60,000)", channels=1, classes=10,
                            seed=SEED, load=lambda: load_fmnist_labeled("train")),
+    "g-cddpm-mnist": dict(dataset="mnist", part="train (all 60,000)", channels=1, classes=10,
+                          seed=SEED, load=lambda: load_mnist_labeled("train")),
     "g-ddpm-cifar": dict(dataset="cifar10", part="train (all 50,000)", channels=3, classes=0,
                          seed=SEED, load=lambda: (load_cifar10("train"), None)),
     "d-ddpm-cifar": dict(dataset="cifar10", part="ddpm_train", channels=3, classes=0,

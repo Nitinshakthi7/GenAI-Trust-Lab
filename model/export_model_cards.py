@@ -15,6 +15,8 @@
 #   detector_intervals.json       95% intervals; the final-test ones are formula-based (the detectors)
 #   detector_blur_control.json    sharpness-only baseline and AUROC on blur-matched real images (calibration split)
 #   audit_<card id>.json          one Auditor run (a-500, a-10000, a-500-dup)
+#   audit_<card id>-s2.json, -s3  the same Auditor run trained with seed 2 / 3 (error bars), once they have run
+#   auditor_clip_copies.json      the copy test of model/auditor_clip.py (pixel distance vs CLIP), shown on the a-500 card
 # File it WRITES:
 #   web/public/results/model-cards.json
 #
@@ -169,6 +171,13 @@ def build_cards():
         cards[run_id] = new_card("model/train_auditor_run.py", f"configs/{run_id}.json")
         for path, label in AUDIT_NUMBERS:
             put(cards[run_id], label, f"audit_{run_id}.json", *path)
+        for seed in (2, 3):  # the same run with another training seed (the default seed is 42)
+            put(cards[run_id], f"Share of generated images flagged (possible copy), training seed {seed}", f"audit_{run_id}-s{seed}.json", "memorization_rate")
+    copies = "auditor_clip_copies.json"  # thresholds set on half A, reported once on half B (50 per group)
+    for method, name in (("pixel_l2", "pixel distance"), ("clip", "CLIP similarity")):
+        for group, text in (("exact", "exact copies flagged (possible copy)"), ("shifted", "copies shifted 2 px flagged (possible copy)"),
+                            ("flipped", "mirrored copies flagged (possible copy)"), ("non_members", "non-member images flagged (false flags)")):
+            put(cards["a-500"], f"Copy test, {name}: share of {text}", copies, "report_half_b", method, group, "rate")
 
     return cards
 

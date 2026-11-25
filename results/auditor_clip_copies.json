@@ -1,0 +1,74 @@
+{
+  "run": "a-500",
+  "clip_model": "openai/clip-vit-large-patch14",
+  "training_images": 500,
+  "members": 100,
+  "non_members": 100,
+  "copies": {
+    "exact": "the training image unchanged",
+    "shifted": "moved 2 pixels to the right (edge column repeated)",
+    "flipped": "mirrored left-right"
+  },
+  "non_member_source": "CIFAR-10 calibration part (never final_test); not the 1,000 images behind /audit/check's CLIP threshold",
+  "split": "half A: 50 members (x3 copies) + 50 non-members sets the thresholds; half B: the other 50 + 50, reported once",
+  "threshold_rule": "half A non-members only, the Auditor's rule: pixel L2 below the 1st percentile, CLIP similarity above the 99th percentile",
+  "thresholds": {
+    "pixel_l2": 13.695,
+    "clip_similarity": 0.9206
+  },
+  "report_half_b": {
+    "pixel_l2": {
+      "exact": {
+        "flagged": 50,
+        "of": 50,
+        "rate": 1.0,
+        "nearest_is_source": 50
+      },
+      "shifted": {
+        "flagged": 18,
+        "of": 50,
+        "rate": 0.36,
+        "nearest_is_source": 50
+      },
+      "flipped": {
+        "flagged": 8,
+        "of": 50,
+        "rate": 0.16,
+        "nearest_is_source": 20
+      },
+      "non_members": {
+        "flagged": 2,
+        "of": 50,
+        "rate": 0.04
+      }
+    },
+    "clip": {
+      "exact": {
+        "flagged": 50,
+        "of": 50,
+        "rate": 1.0,
+        "nearest_is_source": 50
+      },
+      "shifted": {
+        "flagged": 49,
+        "of": 50,
+        "rate": 0.98,
+        "nearest_is_source": 50
+      },
+      "flipped": {
+        "flagged": 48,
+        "of": 50,
+        "rate": 0.96,
+        "nearest_is_source": 50
+      },
+      "non_members": {
+        "flagged": 4,
+        "of": 50,
+        "rate": 0.08
+      }
+    }
+  },
+  "seconds": 113.2,
+  "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "note": "Similarity only: a flag means 'possible copy', not legal copying. Small test (50 per group); proposed, to tune."
+}

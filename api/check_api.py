@@ -6,7 +6,9 @@
 #
 # What it checks:
 #   - all 8 endpoints answer, with exactly the field names written in api/contract.json
-#   - POST /generate works for every generator whose weights are ready (n=2, steps 20)
+#   - POST /generate works for every generator whose weights are ready (n=2, steps 20); the MNIST generators are
+#     'training' until their weights exist; show_steps true adds 8 denoise frames (the last = the first image),
+#     and without it the answer keeps exactly its old keys
 #   - every PNG carries its provenance text note
 #   - bad requests give 400 with {"error": ...}, an unknown generator gives 404,
 #     a model that is not ready gives 503
@@ -14,7 +16,8 @@
 #   - POST /compare is real (no X-Stub header) and gives the right answers for pictures where we
 #     know the answer in advance (same image twice, orange vs black, shifted copy, a cat-like pair,
 #     two real CIFAR-10 calibration images), and 400 for bad uploads. If the pretrained ResNet-18 weights are in the
-#     torch cache, regions_png_base64 must be a valid PNG and the 3 CNN rows must be in the table (else regions is null)
+#     torch cache, regions_png_base64 must be a valid PNG and the 3 CNN rows must be in the table (else regions is null);
+#     the CLIP row is always last (1.00 for the same picture twice, or 'not available' if CLIP cannot be loaded)
 #   - POST /detect is real (no X-Stub header): a real CIFAR-10 calibration image, a VAE
 #     fake and a 64x64 photo all answer 200 with the contract's field names (the 64x64 photo is
 #     out_of_scope with the exact warning), bad uploads give 400, missing detector files give 503.
@@ -43,6 +46,11 @@
 #     and a 30x20 JPG are resized (the note says so); a bad `run` or a missing image is 400; bad uploads are 400; a run whose
 #     results file is missing (a temporary folder is used, nothing is renamed) is 503, a broken one 500; every other run that
 #     already has a results file is checked the same way (count, distance 0)
+#   - Auditor seeds and CLIP: /audit/results points carry mean, sd and n_seeds (one-seed and three-seed files both pass; a
+#     point without n_seeds is 500); /audit/check's CLIP fields (clip_similarity per match, clip_nearest, clip_flag,
+#     clip_threshold) are consistent, a training image and its mirror image find the original by CLIP, a seed run
+#     (a-500-s2) is not a /audit/check run (400), and a run without a CLIP cache answers with null CLIP fields
+#     (the background cache build is switched off here; the a-500 cache is built directly if it is missing)
 #   - the CORS header is present for the Vite website address
 # The final test split of CIFAR-10 is never opened here: real pictures come from the 'calibration' part only.
 
@@ -65,7 +73,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from api import audit, detect, generators
+from api import audit, compare, detect, generators
 from api.common import MAX_UPLOAD_BYTES, PNG_START
 from api.main import app
 from model import compare_cnn, detector, features
@@ -98,7 +106,8 @@ def picture_bytes(kind="PNG"):
     return buffer.getvalue()
 
 
-OPTIONAL = {"full_check", "full_check_error"}     # /detect adds these only for pictures that are not 32x32
+OPTIONAL = {"full_check", "full_check_error",     # /detect adds these only for pictures that are not 32x32
+            "denoise_frames"}                     # /generate adds this only with show_steps true
 
 
 def same_names(real, example):
@@ -147,8 +156,14 @@ def check_endpoints():
 
 def check_generate(statuses):
     ids = [g["id"] for g in client.get("/generators").json()["generators"]]
-    check(ids == ["g-vae-cifar", "g-vae-fmnist", "g-cddpm-fmnist", "g-ddpm-cifar", "g-dcgan-cifar"], "catalogue ids")
+    check(ids == ["g-vae-cifar", "g-vae-fmnist", "g-cddpm-fmnist", "g-vae-mnist", "g-cddpm-mnist", "g-ddpm-cifar",
+                  "g-dcgan-cifar"], "catalogue ids")
     check(statuses["g-dcgan-cifar"] == "not_available", "g-dcgan-cifar is not_available")
+    for gid in ("g-vae-mnist", "g-cddpm-mnist"):
+        check(statuses[gid] in ("training", "ready"), f"{gid} has a config, so it is training (no weights yet) or ready")
+    catalogue = {g["id"]: g for g in client.get("/generators").json()["generators"]}
+    check(catalogue["g-cddpm-mnist"]["classes"] == [str(d) for d in range(10)] and catalogue["g-cddpm-mnist"]["dataset"] == "MNIST",
+          "g-cddpm-mnist: dataset MNIST, classes are the digits 0-9")
     for gid in ("g-vae-cifar", "g-vae-fmnist"):
         check(statuses[gid] == "ready", f"{gid} must be ready")
 
@@ -158,6 +173,8 @@ def check_generate(statuses):
         ("g-ddpm-cifar", dict(n=2, steps=20), 2),
         ("g-cddpm-fmnist", dict(n=2, steps=20, class_id=3, guidance=3.0), 2),
         ("g-cddpm-fmnist", dict(n=2, steps=20), 2),
+        ("g-vae-mnist", dict(n=2), 2),
+        ("g-cddpm-mnist", dict(n=2, steps=20, class_id=7, guidance=3.0), 2),
     ]
     for gid, extra, how_many in requests:
         if statuses[gid] != "ready":
@@ -173,7 +190,7 @@ def check_generate(statuses):
         check(not body["images"][0]["png_base64"].startswith("data:"), "plain base64, no data: prefix")
         for image in body["images"]:
             picture = decode(image)
-            want = (28, 28) if "fmnist" in gid else (32, 32)
+            want = (28, 28) if "mnist" in gid else (32, 32)          # Fashion-MNIST and MNIST
             check(picture.size == want, f"{gid} image size is {want}")
             text = picture.text.get("provenance", "")
             check(f"model: {gid};" in text and "made by GenAI Trust Lab" in text, f"{gid} PNG carries the provenance note")
@@ -187,6 +204,22 @@ def check_generate(statuses):
             two = client.post("/generate", json={"generator_id": gid, "seed": 42, "n": 2, **extra}).json()
             one = client.post("/generate", json={"generator_id": gid, "seed": 43, "n": 1, **extra}).json()
             check(two["images"][1]["png_base64"] == one["images"][0]["png_base64"], f"{gid}: image i is seed + i")
+
+    # "Watch it denoise": show_steps adds 8 frames of the first image; without it the answer has exactly the old keys.
+    for gid in ("g-cddpm-fmnist", "g-ddpm-cifar", "g-cddpm-mnist"):
+        if statuses[gid] != "ready":
+            continue
+        ask = {"generator_id": gid, "seed": 42, "n": 2, "steps": 20}
+        plain = client.post("/generate", json=ask).json()
+        check(list(plain) == ["generator_id", "images", "metadata", "note"], f"{gid}: without show_steps the answer has the old keys")
+        reply = client.post("/generate", json={**ask, "show_steps": True})
+        body, frames = reply.json(), reply.json().get("denoise_frames", [])
+        check(reply.status_code == 200 and same_names(body, CONTRACT["POST /generate"]["response"]), f"{gid} show_steps: 200 with the contract's names")
+        check([f["step"] for f in frames] == [1, 4, 6, 9, 12, 15, 17, 20], f"{gid} show_steps: 8 frames at evenly spaced steps (got {[f['step'] for f in frames]})")
+        check(frames[-1]["png_base64"] == body["images"][0]["png_base64"], f"{gid} show_steps: the last frame is the first image")
+        check(body["images"] == plain["images"], f"{gid} show_steps: the images are the same as without it")
+        check(all(decode(f).size == decode(body["images"][0]).size for f in frames), f"{gid} show_steps: frames are PNGs of the image's size")
+        print(f"generate {gid} show_steps: 8 frames at steps {[f['step'] for f in frames]}")
 
 
 # ------------------------------------------------------- 3. errors (400, 404, 503)
@@ -209,6 +242,7 @@ def check_bad_requests():
         ("guidance = 11", dict(generator_id="g-cddpm-fmnist", class_id=1, guidance=11)),
         ("guidance without class_id", dict(generator_id="g-cddpm-fmnist", guidance=3.0)),
         ("interpolate on a diffusion model", dict(generator_id="g-ddpm-cifar", interpolate={"seed_b": 1, "frames": 4})),
+        ("show_steps on a VAE", dict(generator_id="g-vae-cifar", show_steps=True)),
         ("frames = 1", dict(generator_id="g-vae-cifar", interpolate={"seed_b": 1, "frames": 1})),
         ("frames = 17", dict(generator_id="g-vae-cifar", interpolate={"seed_b": 1, "frames": 17})),
         ("n is text", dict(generator_id="g-vae-cifar", n="many")),
@@ -304,6 +338,10 @@ def check_compare():
     check(reply.status_code == 200 and reply.json()["similarity"]["ssim"] == 1.0, "same image twice: ssim is 1.0")
     check(table["dominant colours"][0] == table["dominant colours"][1], "same image twice: same dominant colours")
     check(table["colour histogram distance"] == ("0.00", "0.00"), "same image twice: histogram distance is 0")
+    clip = table[compare.CLIP_FEATURE]
+    if clip[0] == "not available":
+        print("WARNING: CLIP cannot be loaded; the /compare CLIP row says 'not available'")
+    check(clip in (("1.00", "1.00"), ("not available", "not available")), f"same image twice: CLIP similarity is 1.00 (got {clip})")
     check(decode({"png_base64": reply.json()["diff_heatmap_png_base64"]}).convert("RGB").getextrema()[1][0] == 255,
           "same image twice: the difference map is all white (no difference)")
 
@@ -342,8 +380,11 @@ def check_compare():
     reply = compare_pictures(first, second)
     body = reply.json()
     check(reply.status_code == 200 and same_names(body, example), f"{where}: 200 with the contract's field names")
-    check([r["feature"] for r in body["feature_table"]] == rows + (cnn_rows if cnn_ready else []),
-          f"the feature table has the 9 rows{' and the 3 CNN rows' if cnn_ready else ''}")
+    check([r["feature"] for r in body["feature_table"]] == rows + (cnn_rows if cnn_ready else []) + [compare.CLIP_FEATURE],
+          f"the feature table has the 9 rows{' and the 3 CNN rows' if cnn_ready else ''} and the CLIP row")
+    clip = table_of(reply)[compare.CLIP_FEATURE]
+    check(clip[0] == clip[1] and (clip[0] == "not available" or -1 <= float(clip[0]) <= 1), f"{where}: CLIP similarity is -1 to 1 (got {clip})")
+    print(f"compare {where}: CLIP similarity {clip[0]}")
     check(all(isinstance(v, str) and v for r in body["feature_table"] for v in r.values()), "every table cell is a text")
     check(body["similarity"]["lpips"] is None, "lpips is null (not built)")
     if cnn_ready:
@@ -713,6 +754,8 @@ def check_audit():
         check("X-Stub" not in reply.headers, "/audit/results is real, so no X-Stub header")
         rates = [point["memorization_rate"] for experiment in body["experiments"] for point in experiment["points"]]
         check(len(body["experiments"]) == 2 and rates == [None] * 4, f"audit placeholder: two experiments, every rate null (got {rates})")
+        check(all(p["n_seeds"] == 0 and p["memorization_rate_mean"] is None and p["memorization_rate_sd"] is None and p["flagged_mean"] is None
+                  for e in body["experiments"] for p in e["points"]), "audit placeholder: n_seeds 0 and every mean and sd null")
         check(body["examples"] == [], "audit placeholder: no examples")
         check(body["note"].startswith(PLACEHOLDER_START), "audit placeholder: the note starts with the PLACEHOLDER words")
         check("not decide legal copying" in body["note"], "audit placeholder: the note says similarity only, not legal copying")
@@ -723,7 +766,7 @@ def check_audit():
         train = torch.rand(20, 3, 32, 32, generator=g) * 2 - 1
         generated = torch.cat([train[:1], torch.rand(5, 3, 32, 32, generator=g) * 2 - 1])
         pairs = closest_pairs(generated, train, k=3)
-        runs = {"a-500": {"memorization_rate": 0.25, "examples": pairs}, "a-10000": {"memorization_rate": 0.0625, "examples": pairs}}
+        runs = {"a-500": {"memorization_rate": 0.25, "flagged": 4, "examples": pairs}, "a-10000": {"memorization_rate": 0.0625, "flagged": 1, "examples": pairs}}
         results_file = folder / "audit_results.json"
         results_file.write_text(json.dumps(build_summary(runs)), encoding="utf-8")        # a-500-dup is "not done yet"
         reply = get_audit(results_file)
@@ -740,6 +783,23 @@ def check_audit():
             check(picture.format == "PNG" and picture.size == (128, 128), f"audit results file: {key} is a 128 x 128 PNG")
             check(not body["examples"][0][key].startswith("data:"), f"audit results file: {key} is plain base64")
         print(f"audit results file: rates {points}, {len(body['examples'])} examples, distances {[p['distance'] for p in body['examples'][:3]]}")
+        one = [[(p["n_seeds"], p["memorization_rate_mean"], p["memorization_rate_sd"], p["flagged_mean"], p["flagged_sd"]) for p in e["points"]] for e in body["experiments"]]
+        check(one == [[(1, 0.25, None, 4, None), (1, 0.0625, None, 1, None)], [(1, 0.25, None, 4, None), (0, None, None, None, None)]],
+              f"audit results file, one seed: n_seeds 1, mean = the rate, sd null (got {one})")
+
+        # (b2) the same with two extra seeds of a-500 (a-500-s2, a-500-s3): mean and sd over the 3 seeds; examples still from seed 42 only
+        three_file = folder / "audit_results_three_seeds.json"
+        runs3 = {**runs, "a-500-s2": {"memorization_rate": 0.3, "flagged": 5, "examples": pairs}, "a-500-s3": {"memorization_rate": 0.35, "flagged": 6, "examples": pairs}}
+        three_file.write_text(json.dumps(build_summary(runs3)), encoding="utf-8")
+        reply = get_audit(three_file)
+        body = reply.json()
+        check(reply.status_code == 200 and same_names(body, example) and body == json.loads(three_file.read_text(encoding="utf-8")),
+              f"audit results file, three seeds: 200, the contract's field names, the file unchanged (got {reply.status_code})")
+        p = body["experiments"][0]["points"][0]
+        check((p["memorization_rate"], p["n_seeds"], p["memorization_rate_mean"], p["memorization_rate_sd"], p["flagged_mean"], p["flagged_sd"]) == (0.25, 3, 0.3, 0.05, 5, 1),
+              f"audit results file, three seeds: seed-42 rate kept, mean 0.3, sd 0.05, flagged 5 +/- 1 (got {p})")
+        check(len(body["examples"]) == 6, "audit results file, three seeds: the seed runs add no examples")
+        print(f"audit results file, three seeds: a-500 point {p}")
 
         # (c) a broken results file gives 500 with {"error": ...}
         good = json.loads(results_file.read_text(encoding="utf-8"))
@@ -747,17 +807,21 @@ def check_audit():
         del missing_field["examples"][0]["distance"]
         bad_point = json.loads(results_file.read_text(encoding="utf-8"))
         bad_point["experiments"][0]["points"][0] = {"x": 500}
+        no_seeds = json.loads(results_file.read_text(encoding="utf-8"))
+        del no_seeds["experiments"][1]["points"][1]["n_seeds"]
         for what, content in (("text that is not JSON", "this is not json {"), ("an empty file", ""), ("a JSON list", "[]"),
                               ("other field names", json.dumps({"hello": 1})), ("a missing 'note'", json.dumps({k: v for k, v in good.items() if k != "note"})),
-                              ("an example without 'distance'", json.dumps(missing_field)), ("a point without 'memorization_rate'", json.dumps(bad_point))):
+                              ("an example without 'distance'", json.dumps(missing_field)), ("a point without 'memorization_rate'", json.dumps(bad_point)),
+                              ("a point without 'n_seeds'", json.dumps(no_seeds))):
             results_file.write_text(content, encoding="utf-8")
             check_error(get_audit(results_file), 500, f"audit results file with {what}")
-    print("audit: placeholder, results file and 7 kinds of broken file all as expected")
+    print("audit: placeholder, one-seed and three-seed results files and 8 kinds of broken file all as expected")
 
 
 # ------------------------------------------------------- 10. POST /audit/check (real)
 
-CHECK_NAMES = {"rank", "distance", "phash_distance", "image_png_base64"}
+CHECK_NAMES = {"rank", "distance", "phash_distance", "clip_similarity", "image_png_base64"}
+CHECK_TOP = {"nearest", "flag", "clip_nearest", "clip_flag", "clip_threshold", "note"}
 BANNED_WORDS = ("copied", "stolen", "plagiarism", "infringement")        # never used as a conclusion
 
 
@@ -777,8 +841,24 @@ def check_good_answer(reply, what):
     """The checks every good /audit/check answer must pass. Returns the answer."""
     check(reply.status_code == 200, f"{what}: /audit/check answers 200 (got {reply.status_code}: {reply.text[:200]})")
     body = reply.json()
-    check(same_names(body, CONTRACT["POST /audit/check"]["response"]), f"{what}: the contract's field names")
-    check(set(body) == {"nearest", "flag", "note"} and all(set(n) == CHECK_NAMES for n in body["nearest"]), f"{what}: exactly the contract's keys")
+    example = dict(CONTRACT["POST /audit/check"]["response"])
+    if body.get("clip_nearest") is None:
+        example["clip_nearest"] = None                  # null while the run's CLIP cache is not ready
+    check(same_names(body, example), f"{what}: the contract's field names")
+    check(set(body) == CHECK_TOP and all(set(n) == CHECK_NAMES for n in body["nearest"]), f"{what}: exactly the contract's keys")
+    sims = [n["clip_similarity"] for n in body["nearest"]]
+    if body["clip_flag"] is None:
+        check(body["clip_nearest"] is None and body["clip_threshold"] is None and sims == [None] * 3
+              and ("CLIP similarity is not ready yet" in body["note"] or "CLIP similarity is not available" in body["note"]),
+              f"{what}: CLIP not ready: every CLIP field null and the note says so")
+    else:
+        best, cut = body["clip_nearest"], body["clip_threshold"]
+        check(0 < cut <= 1 and all(isinstance(s, float) and -1 <= s <= 1.0001 for s in sims + [best["clip_similarity"]]),
+              f"{what}: CLIP threshold and similarities are numbers up to 1 (got {cut}, {sims}, {best['clip_similarity']})")
+        check(best["clip_similarity"] >= max(sims) and body["clip_flag"] == ("possible_copy" if best["clip_similarity"] > cut else "not_flagged"),
+              f"{what}: clip_nearest is the most similar and clip_flag follows the CLIP threshold")
+        check(best["distance"] >= body["nearest"][0]["distance"] and decode({"png_base64": best["image_png_base64"]}).size == (32, 32)
+              and f"{cut:.3f}" in body["note"], f"{what}: clip_nearest has a pixel distance and a 32 x 32 PNG; the note gives the CLIP threshold")
     check("X-Stub" not in reply.headers and not body["note"].startswith("stub:"), f"{what}: real answer, no X-Stub header, no 'stub:' note")
     near = body["nearest"]
     check([n["rank"] for n in near] == [1, 2, 3], f"{what}: the 3 nearest, ranks 1 to 3")
@@ -798,6 +878,8 @@ def check_good_answer(reply, what):
 def check_audit_check():
     threshold, unique = audit.run_settings("a-500")         # the threshold in results/audit_a-500.json
     first = train_picture(int(subset_rows("a-500")[0]))     # a picture that WAS in the training set of a-500
+    audit.CLIP_AUTO_BUILD = False                           # never start a long CLIP cache build from the checks
+    audit.auditor_clip.run_index("a-500")                   # the a-500 CLIP cache: read, or built now (about 1 minute)
 
     # (a) a training image goes back in: distance 0, possible_copy, itself as rank 1
     start = time.time()
@@ -818,6 +900,16 @@ def check_audit_check():
     check(abs(float(exact[0]) - near[0]["distance"]) < 1e-4, "rank 1 has the distance model/auditor.py's nearest_distances gives")
     print(f"audit check a-500 training image: distances {[n['distance'] for n in near]}, phash {[n['phash_distance'] for n in near]}, "
           f"flag {body['flag']}, threshold {threshold}, {len(train)} training images, {seconds:.2f} s")
+    check(body["clip_flag"] == "possible_copy" and near[0]["clip_similarity"] >= 0.999 and body["clip_nearest"]["clip_similarity"] >= 0.999
+          and (np.array(decode({"png_base64": body["clip_nearest"]["image_png_base64"]})) == first).all(),
+          f"a-500 training image: CLIP similarity 1, clip_flag possible_copy, clip_nearest is the same picture (got {body['clip_flag']}, {near[0]['clip_similarity']})")
+
+    # (a2) its mirror image: far in pixels, but CLIP still finds the original
+    body = check_good_answer(send_check(image_png(first[:, ::-1].copy())), "a-500 mirrored training image")
+    check(body["nearest"][0]["distance"] > 0 and (np.array(decode({"png_base64": body["clip_nearest"]["image_png_base64"]})) == first).all(),
+          "a-500 mirrored training image: not distance 0, and clip_nearest is the original picture")
+    print(f"audit check a-500 mirrored training image: pixel flag {body['flag']} (distance {body['nearest'][0]['distance']}), "
+          f"clip_flag {body['clip_flag']} (similarity {body['clip_nearest']['clip_similarity']}, threshold {body['clip_threshold']})")
 
     # (b) a real picture the model never saw (CIFAR-10 calibration image): never at distance 0
     (held_out, _), where = cifar_test_pictures()
@@ -840,7 +932,7 @@ def check_audit_check():
     check("Your image was 30x20, so it was resized to 32x32 first." in body["note"], "30x20 JPG: the note says it was resized")
 
     # (e) the form field `run`, and a missing image
-    for run in ("a-999", "A-500", "a-500 ", "../results"):
+    for run in ("a-999", "A-500", "a-500 ", "../results", "a-500-s2"):          # a-500-s2: seed runs are for the summary only
         check_error(send_check(image_png(first), run=run), 400, f"/audit/check run {run!r}")
     check_error(client.post("/audit/check", data={"run": "a-500"}), 400, "/audit/check no image field")
 
@@ -880,7 +972,8 @@ def check_audit_check():
         start = time.time()
         body = check_good_answer(send_check(image_png(train_picture(int(subset_rows(run)[0]))), run=run), f"{run} training image")
         check(body["nearest"][0]["distance"] == 0 and body["flag"] == "possible_copy", f"{run}: a training image gives distance 0 and possible_copy")
-        print(f"audit check {run}: {count} training images, training image distance 0, {time.time() - start:.2f} s")
+        print(f"audit check {run}: {count} training images, training image distance 0, clip_flag {body['clip_flag']} "
+              f"(null = no CLIP cache yet), {time.time() - start:.2f} s")
     print("audit check: training image, held-out image, noise, resizing, run field, bad uploads and not-ready runs all as expected")
 
 

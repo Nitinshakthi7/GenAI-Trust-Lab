@@ -181,8 +181,9 @@ def _guess_noise(model, x, t, class_ids, guidance):
     return eps
 
 
-def _ddim_loop(model, x, timesteps, schedule, class_ids, guidance, eta, gen):
-    """Walk down the list of timesteps (big to small), removing noise at each step."""
+def _ddim_loop(model, x, timesteps, schedule, class_ids, guidance, eta, gen, history=None):
+    """Walk down the list of timesteps (big to small), removing noise at each step.
+    history: a list; if given, the image after every step is added to it."""
     ac = schedule["alphas_cumprod"].to(x.device)
     for i, t in enumerate(timesteps):
         ab_t = ac[t]
@@ -194,11 +195,14 @@ def _ddim_loop(model, x, timesteps, schedule, class_ids, guidance, eta, gen):
         x = ab_prev.sqrt() * x0 + (1 - ab_prev - sigma ** 2).clamp(min=0).sqrt() * eps
         if eta > 0:                                     # eta = 0 is the deterministic DDIM
             x = x + sigma * torch.randn(x.shape, generator=gen).to(x.device)
+        if history is not None:
+            history.append(x)                           # x is a new tensor each step, so no copy is needed
     return x
 
 
 @torch.no_grad()
-def ddim_sample(model, shape, steps, seed, class_ids=None, guidance=0.0, eta=0.0, schedule=None):
+def ddim_sample(model, shape, steps, seed, class_ids=None, guidance=0.0, eta=0.0, schedule=None,
+                return_steps=False):
     """Make new images with DDIM. Returns a tensor of `shape` with values in [-1, 1].
 
     steps: how many denoising steps (20, 50 or 100). Same seed = same images.
@@ -206,6 +210,9 @@ def ddim_sample(model, shape, steps, seed, class_ids=None, guidance=0.0, eta=0.0
     guidance: w in the guidance formula. 0 = off, 3 is a typical strong value.
     eta: 0 = deterministic DDIM. schedule: the one the model was trained with
          (default: cosine, T=1000).
+    return_steps: True = return (images, frames) instead: frames is a list of 8
+         (step number 1..steps, images after that step), at evenly spaced steps;
+         the last frame is the final images ("watch it denoise").
     """
     model.eval()
     device = next(model.parameters()).device
@@ -217,8 +224,12 @@ def ddim_sample(model, shape, steps, seed, class_ids=None, guidance=0.0, eta=0.0
     gen = torch.Generator().manual_seed(seed)           # CPU generator, like vae.py
     x = torch.randn(shape, generator=gen).to(device)    # start from pure noise
     timesteps = torch.linspace(schedule["T"] - 1, 0, steps).round().long().tolist()
-    x = _ddim_loop(model, x, timesteps, schedule, class_ids, guidance, eta, gen)
-    return x.clamp(-1, 1)
+    history = [] if return_steps else None
+    x = _ddim_loop(model, x, timesteps, schedule, class_ids, guidance, eta, gen, history)
+    if not return_steps:
+        return x.clamp(-1, 1)
+    picks = torch.linspace(0, steps - 1, 8).round().long().tolist()      # 8 frames, the last one = the final step
+    return x.clamp(-1, 1), [(i + 1, history[i].clamp(-1, 1)) for i in picks]
 
 
 @torch.no_grad()
@@ -318,6 +329,10 @@ if __name__ == "__main__":
     assert torch.allclose(a, b, atol=1e-4), "same seed must give the same images"
     assert not torch.allclose(a, c, atol=1e-4), "other seed must give other images"
     print(f"same seed max difference: {(a - b).abs().max():.2e}   other seed mean difference: {(a - c).abs().mean():.3f}")
+    final, frames = ddim_sample(model, (4, 3, 32, 32), 20, seed=1, return_steps=True)
+    assert len(frames) == 8 and frames[-1][0] == 20 and torch.equal(frames[-1][1], final), "8 frames, last = final"
+    assert torch.allclose(final, a, atol=1e-4), "return_steps must not change the images"
+    print(f"return_steps: frames at steps {[s for s, _ in frames]}")
 
     # 4. Guidance changes the images (conditional model, same seed).
     cmodel = TinyUNet(3, 10).to(device)

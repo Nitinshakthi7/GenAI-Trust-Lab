@@ -1,0 +1,40 @@
+{
+  "run_id": "fullsize-v2",
+  "train_folder": [
+    "data\\openfake\\train",
+    "data\\openfake\\train2"
+  ],
+  "test_folder": null,
+  "train_real": 614,
+  "train_ai": 636,
+  "test_images": 0,
+  "augment": 1,
+  "train_rows": 2500,
+  "augment_changes": "one per copy, picked at random (seed from SEED, image and copy number): JPEG quality 50-90; resize 0.5-0.75x and back; screenshot-style (0.6-0.8x, 2-6% border cut, PNG). Applied before the 512 square + JPEG 90 step; Smaug scores the changed picture",
+  "side": 512,
+  "jpeg_quality": 90,
+  "cnn_C": 0.1,
+  "clip_C": 1.0,
+  "feature_C": 1.0,
+  "combiner_C": 1.0,
+  "combiner_inputs": [
+    "ours-clip",
+    "ours-features",
+    "smaug"
+  ],
+  "features": [
+    "Sharpness",
+    "Noise level",
+    "Fine-detail energy (%)",
+    "Colour saturation",
+    "Edge amount (%)"
+  ],
+  "clip": "openai/clip-vit-large-patch14 (frozen, image_embeds 768, normalized)",
+  "cnn_baseline": "torchvision resnet18 IMAGENET1K_V1 (frozen, avgpool 512)",
+  "smaug": "abacusai/Smaug-AI-Image-Detector",
+  "folds": "stratified 5-fold (an image and its copies in one fold)",
+  "seed": 42,
+  "unclear_band": "95th percentile of real out-of-fold combiner scores / 5th percentile of AI ones",
+  "evaluation": "out-of-fold, stratified 5-fold",
+  "note": "proposed, to tune"
+}
