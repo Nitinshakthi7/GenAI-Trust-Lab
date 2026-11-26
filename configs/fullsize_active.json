@@ -1,0 +1,4 @@
+{
+  "run_id": "pilot",
+  "note": "Which full-size detector run the site uses: pilot (first run, live since 25 Nov) or v2. v2 is promoted only if it beats pilot on the held-out folder (docs/friday_plan.md step 9)."
+}

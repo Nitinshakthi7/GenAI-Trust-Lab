@@ -150,7 +150,8 @@ def measured_features(img):
     power = np.abs(np.fft.fftshift(np.fft.fft2((gray - gray.mean()) * window))) ** 2
     yy, xx = np.indices(power.shape) - SIDE // 2
     radius = np.hypot(xx, yy) / (SIDE // 2)                            # 0 = centre, 1 = edge of the spectrum
-    fine = 100.0 * power[radius > 0.5].sum() / power[radius > 0].sum()
+    total = power[radius > 0].sum()
+    fine = 100.0 * power[radius > 0.5].sum() / total if total > 0 else 0.0   # a single-colour picture has no detail at all
     saturation = np.asarray(sq.convert("HSV"), dtype=np.float64)[..., 1].mean() / 255.0
     edges = np.hypot(ndimage.sobel(gray, 0), ndimage.sobel(gray, 1))
     edge_share = 100.0 * (edges > 100).mean()                          # 100 = a strong edge on the 0..255 scale (proposed)

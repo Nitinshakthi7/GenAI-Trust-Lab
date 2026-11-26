@@ -46,3 +46,16 @@ This file is the decision log entry for that change (to be linked from PLAN.md's
 - Detector v2 replaces v1 on the demo only if it beats v1 on the clean and robustness rows.
 - Every number on the site comes from a script; unmeasured numbers stay "[PLACEHOLDER - not measured yet]".
 - AI assistance (Claude Code) was used for planning, code and measurement; to be disclosed in docs/ai_usage.md.
+
+## Held-out results and the v2 decision (Wed 25 Nov, 20:18-20:25)
+- First scoring attempt crashed before any metric was computed: one held-out "AI" image is completely black
+  (ai/heldout_00543.png), and its fine-detail feature was 0/0. Fixed in model/fullsize.py (a picture with no detail
+  gets 0), the cached value was set to the same 0, the two guard entries were cleared; the record is in
+  logs/heldout_first_attempt_crashed.json. Then each run was scored once (results/fullsize_robustness_pilot.json and
+  results/fullsize_robustness_v2.json, times_scored 1).
+- Clean pictures, 600 held-out images (300 real, 300 AI): v1 (pilot) combiner 98.7% at 0.5, 531/537 decided answers
+  correct, 63 unclear, 0 real photos called AI; v2 combiner 98.7%, 510/515 decided correct, 85 unclear, 0 real called
+  AI. Our CLIP model alone: v1 77.5%, v2 75.2%.
+- Decision (rule from docs/friday_plan.md step 9: promote v2 only if it beats v1 on clean and robustness rows):
+  v2 does not clearly beat v1, so the site keeps v1 (configs/fullsize_active.json run_id "pilot"); v2 is reported as
+  a result. Finding: more training data plus augmentation did not improve our CLIP model on this held-out set.

@@ -1,0 +1,23 @@
+{
+  "run_id": "a-10000-s2",
+  "dataset": "cifar10",
+  "part": "random subset of the 50,000 train images (seed 42)",
+  "training_rows": 10000,
+  "unique_images": 10000,
+  "duplicate_share_percent": 0.0,
+  "seed": 2,
+  "steps": 6000,
+  "max_minutes": 0,
+  "batch_size": 128,
+  "learning_rate": 0.0002,
+  "optimizer": "Adam",
+  "ema_decay": 0.999,
+  "timesteps": 1000,
+  "noise_schedule": "cosine",
+  "samples": 1000,
+  "sample_steps": 50,
+  "sample_seed": 242,
+  "calibration_percentile": 1.0,
+  "heldout_part": "calibration",
+  "note": "proposed, to tune"
+}

@@ -1,0 +1,11 @@
+{
+  "run_id": "g-vae-mnist",
+  "epochs_run": 150,
+  "stopped_by_time_limit": false,
+  "total_minutes": 7.75,
+  "seconds_per_epoch": 3.1,
+  "final_loss": 52.95,
+  "parameter_count": 1118401,
+  "weights_size_mb": 4.49,
+  "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU"
+}

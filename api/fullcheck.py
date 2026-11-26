@@ -8,6 +8,7 @@
 # their probabilities are null. The trained file is re-read when it changes, so retraining needs no restart.
 
 import io
+import json
 
 import joblib
 import numpy as np
@@ -23,15 +24,42 @@ NOTE = ("A pilot: our models were trained on about 600 labelled images (OpenFake
 _bundle, _bundle_time = None, None
 
 
+ACTIVE_FILE = fullsize.CONFIGS_DIR / "fullsize_active.json"     # {"run_id": "pilot" or "v2"}: which run the site uses
+
+
+def active_run():
+    try:
+        return json.loads(ACTIVE_FILE.read_text(encoding="utf-8"))["run_id"]
+    except (OSError, ValueError, KeyError):
+        return "pilot"
+
+
 def bundle():
-    """Our trained models (weights/fullsize_models.joblib), or None before the first training."""
+    """The active run's trained models (re-read when the file or the active run changes), or None before training."""
     global _bundle, _bundle_time
-    if not fullsize.BUNDLE_FILE.exists():
+    path = fullsize.run_files(active_run())[0]
+    if not path.exists():
         return None
-    changed = fullsize.BUNDLE_FILE.stat().st_mtime
-    if changed != _bundle_time:
-        _bundle, _bundle_time = joblib.load(fullsize.BUNDLE_FILE), changed
+    key = (str(path), path.stat().st_mtime)
+    if key != _bundle_time:
+        _bundle, _bundle_time = joblib.load(path), key
     return _bundle
+
+
+def heldout_tested(run_id):
+    """'Tested' texts from the run's once-scored held-out report (clean pictures, all images), or {} if not scored yet."""
+    path = fullsize.RESULTS_DIR / f"fullsize_robustness_{run_id}.json"
+    try:
+        row = next(r for r in json.loads(path.read_text(encoding="utf-8"))["rows"]
+                   if r["condition"] == "clean" and r["group"] == "all")
+    except (OSError, ValueError, KeyError, StopIteration):
+        return {}
+    how = "held-out images, scored once"
+    texts = {k: f"{m['correct']} of {m['total']} correct ({how})" for k, m in row["models"].items() if m.get("total")}
+    lab = row["combiner_labels"]
+    texts["combiner"] = (f"{lab['correct_among_decided']} of {lab['decided']} decided answers correct, "
+                         f"{lab['unclear']} of {lab['real_images'] + lab['ai_images']} unclear ({how})")
+    return texts
 
 
 def file_clues(data, picture):
@@ -69,7 +97,8 @@ def full_check(data):
         scores["ours-features"] = float(trained["features"].predict_proba(feats)[0, 1])
         scaler, lr = trained["features"][0], trained["features"][-1]
         push = (lr.coef_[0] * scaler.transform(feats)[0]).tolist()   # each feature's share of the decision (log-odds)
-        medians, tested, cut = trained["medians"], trained["tested"], trained["band"]
+        medians, cut = trained["medians"], trained["band"]
+        tested = heldout_tested(active_run()) or trained["tested"]   # held-out report once scored, else training text
     known = [p for p in scores.values() if p is not None]
     if trained and smaug is not None:                    # OUR combiner decides (logistic regression on the 3 scores)
         inputs = trained["combiner_inputs"]

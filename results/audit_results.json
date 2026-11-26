@@ -7,20 +7,20 @@
         {
           "x": 500,
           "memorization_rate": 0.026,
-          "memorization_rate_mean": 0.026,
-          "memorization_rate_sd": null,
-          "flagged_mean": 26.0,
-          "flagged_sd": null,
-          "n_seeds": 1
+          "memorization_rate_mean": 0.0257,
+          "memorization_rate_sd": 0.0006,
+          "flagged_mean": 25.67,
+          "flagged_sd": 0.58,
+          "n_seeds": 3
         },
         {
           "x": 10000,
           "memorization_rate": 0.004,
-          "memorization_rate_mean": 0.004,
-          "memorization_rate_sd": null,
-          "flagged_mean": 4.0,
-          "flagged_sd": null,
-          "n_seeds": 1
+          "memorization_rate_mean": 0.0037,
+          "memorization_rate_sd": 0.0025,
+          "flagged_mean": 3.67,
+          "flagged_sd": 2.52,
+          "n_seeds": 3
         }
       ]
     },
@@ -31,20 +31,20 @@
         {
           "x": 0,
           "memorization_rate": 0.026,
-          "memorization_rate_mean": 0.026,
-          "memorization_rate_sd": null,
-          "flagged_mean": 26.0,
-          "flagged_sd": null,
-          "n_seeds": 1
+          "memorization_rate_mean": 0.0257,
+          "memorization_rate_sd": 0.0006,
+          "flagged_mean": 25.67,
+          "flagged_sd": 0.58,
+          "n_seeds": 3
         },
         {
           "x": 30,
           "memorization_rate": 0.039,
-          "memorization_rate_mean": 0.039,
-          "memorization_rate_sd": null,
-          "flagged_mean": 39.0,
-          "flagged_sd": null,
-          "n_seeds": 1
+          "memorization_rate_mean": 0.0427,
+          "memorization_rate_sd": 0.0035,
+          "flagged_mean": 42.67,
+          "flagged_sd": 3.51,
+          "n_seeds": 3
         }
       ]
     }

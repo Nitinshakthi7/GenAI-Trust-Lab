@@ -178,9 +178,19 @@
         "Generated: median distance": 18.985,
         "Held-out real: smallest distance": 7.818,
         "Held-out real: 1st percentile distance": 11.822,
-        "Held-out real: median distance": 21.741
+        "Held-out real: median distance": 21.741,
+        "Share of generated images flagged (possible copy), training seed 2": 0.025,
+        "Share of generated images flagged (possible copy), training seed 3": 0.026,
+        "Copy test, pixel distance: share of exact copies flagged (possible copy)": 1.0,
+        "Copy test, pixel distance: share of copies shifted 2 px flagged (possible copy)": 0.36,
+        "Copy test, pixel distance: share of mirrored copies flagged (possible copy)": 0.16,
+        "Copy test, pixel distance: share of non-member images flagged (false flags)": 0.04,
+        "Copy test, CLIP similarity: share of exact copies flagged (possible copy)": 1.0,
+        "Copy test, CLIP similarity: share of copies shifted 2 px flagged (possible copy)": 0.98,
+        "Copy test, CLIP similarity: share of mirrored copies flagged (possible copy)": 0.96,
+        "Copy test, CLIP similarity: share of non-member images flagged (false flags)": 0.08
       },
-      "source": "results/audit_a-500.json"
+      "source": "results/audit_a-500.json, results/audit_a-500-s2.json, results/audit_a-500-s3.json, results/auditor_clip_copies.json"
     },
     "a-10000": {
       "script": "model/train_auditor_run.py",
@@ -201,9 +211,11 @@
         "Generated: median distance": 20.537,
         "Held-out real: smallest distance": 6.957,
         "Held-out real: 1st percentile distance": 9.743,
-        "Held-out real: median distance": 19.598
+        "Held-out real: median distance": 19.598,
+        "Share of generated images flagged (possible copy), training seed 2": 0.001,
+        "Share of generated images flagged (possible copy), training seed 3": 0.006
       },
-      "source": "results/audit_a-10000.json"
+      "source": "results/audit_a-10000.json, results/audit_a-10000-s2.json, results/audit_a-10000-s3.json"
     },
     "a-500-dup": {
       "script": "model/train_auditor_run.py",
@@ -224,9 +236,11 @@
         "Generated: median distance": 18.774,
         "Held-out real: smallest distance": 7.818,
         "Held-out real: 1st percentile distance": 11.822,
-        "Held-out real: median distance": 21.842
+        "Held-out real: median distance": 21.842,
+        "Share of generated images flagged (possible copy), training seed 2": 0.043,
+        "Share of generated images flagged (possible copy), training seed 3": 0.046
       },
-      "source": "results/audit_a-500-dup.json"
+      "source": "results/audit_a-500-dup.json, results/audit_a-500-dup-s2.json, results/audit_a-500-dup-s3.json"
     }
   }
 }
